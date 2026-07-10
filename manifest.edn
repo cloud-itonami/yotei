@@ -1,40 +1,23 @@
-;; yotei — actor manifest (kotoba-native; supersedes actor-manifest.jsonld)
-;; Scheduling commons (Calendly inversion) — free, no booker-harvest, no double-book.
-;; ADR-2606072200 (remediation Phase A of ADR-2606071800)
-{:actor/id        "yotei"
- :actor/glyph     "予定"
- :actor/tier      :tier-b
- :actor/domain    "yotei.etzhayyim.com"
- :actor/purpose   "Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept bookings, FREE with no seat tiers and NO booker-data harvesting. Bookings are append-only kotoba Datoms; a proposal overlapping a confirmed booking is structurally refused (no-double-book); confirmations are member-signed. kotoba-EAVT-native, Murakumo-only, no urgency/scarcity dark-patterns."
- :actor/status    :r1
- :actor/adr       "2606072200"
- :actor/supersedes "actor-manifest.jsonld (legacy T1 MCP-Compose / RisingWave-Cypher; deprecated, removed after 1 R-cycle)"
-
- :actor/charter-rider
- {:rider/version "2.0"
-  :rider/applied true}
-
- :actor/gates
- [{:gate/id "G1"  :gate/name "no-tier"               :gate/rule "free; no paid seat tiers / subscription; no external inflow (§1.3)"}
-  {:gate/id "G2"  :gate/name "no-harvest"            :gate/rule "no booker profiling / data resale / CRM funnel; booking PII → com.etzhayyim.encrypted.* and used only to hold the slot (ADR-2605181100)"}
-  {:gate/id "G3"  :gate/name "kotoba-eavt-native"    :gate/rule "calendar/availability/event/booking are append-only kotoba Datoms; no RisingWave/SQL/Cypher (corrects legacy manifest)"}
-  {:gate/id "G4"  :gate/name "no-double-book"        :gate/rule "a proposal whose slot overlaps an existing confirmed booking on the same calendar is structurally refused (not last-write-wins)"}
-  {:gate/id "G5"  :gate/name "no-server-key"         :gate/rule "booking confirmations are member-signed (passkey/ERC-4337); yotei holds no key (ADR-2605231525); server signature refused"}
-  {:gate/id "G6"  :gate/name "wellbecoming-anti-dark":gate/rule "honest availability only; no scarcity/urgency ('3 spots left') / FOMO nudges; optimize coordination, never conversion"}
-  {:gate/id "G7"  :gate/name "murakumo-only"         :gate/rule "NL command parsing / narration via KotobaLLM 127.0.0.1:4000; no external LLM (ADR-2605215000)"}
-  {:gate/id "G8"  :gate/name "consent-bound"         :gate/rule "member DID-signed consent before a booking holds a slot or shares contact handles"}]
-
- :actor/cells
- [{:cell/id "calendar"  :cell/kind :datalog   :cell/runtime :kotoba :cell/doc "calendar + availability + event + booking Datoms"}
-  {:cell/id "propose"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "availability → free slots (no-double-book G4) → proposed booking"}
-  {:cell/id "confirm"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "consent (G8) → member-signed confirm (G5) → social announce"}]
-
- :actor/lexicons
- ["com.etzhayyim.yotei.availability"
-  "com.etzhayyim.yotei.booking"
-  "com.etzhayyim.yotei.event"]
-
- :actor/siblings
- {:yoro    "public booking page host"
-  :musubi  "covenant ceremony scheduling"
-  :society6 "governance-meeting scheduling"}}
+;; Datomic/Datascript tx-data (edn-datomize.bb; source: original manifest.edn top-level map)
+[{:actor/glyph "予定",
+  :actor/cells
+  "[{:cell/id \"calendar\", :cell/kind :datalog, :cell/runtime :kotoba, :cell/doc \"calendar + availability + event + booking Datoms\"} {:cell/id \"propose\", :cell/kind :langgraph, :cell/runtime :wasm, :cell/doc \"availability → free slots (no-double-book G4) → proposed booking\"} {:cell/id \"confirm\", :cell/kind :langgraph, :cell/runtime :wasm, :cell/doc \"consent (G8) → member-signed confirm (G5) → social announce\"}]",
+  :actor/gates
+  "[{:gate/id \"G1\", :gate/name \"no-tier\", :gate/rule \"free; no paid seat tiers / subscription; no external inflow (§1.3)\"} {:gate/id \"G2\", :gate/name \"no-harvest\", :gate/rule \"no booker profiling / data resale / CRM funnel; booking PII → com.etzhayyim.encrypted.* and used only to hold the slot (ADR-2605181100)\"} {:gate/id \"G3\", :gate/name \"kotoba-eavt-native\", :gate/rule \"calendar/availability/event/booking are append-only kotoba Datoms; no RisingWave/SQL/Cypher (corrects legacy manifest)\"} {:gate/id \"G4\", :gate/name \"no-double-book\", :gate/rule \"a proposal whose slot overlaps an existing confirmed booking on the same calendar is structurally refused (not last-write-wins)\"} {:gate/id \"G5\", :gate/name \"no-server-key\", :gate/rule \"booking confirmations are member-signed (passkey/ERC-4337); yotei holds no key (ADR-2605231525); server signature refused\"} {:gate/id \"G6\", :gate/name \"wellbecoming-anti-dark\", :gate/rule \"honest availability only; no scarcity/urgency ('3 spots left') / FOMO nudges; optimize coordination, never conversion\"} {:gate/id \"G7\", :gate/name \"murakumo-only\", :gate/rule \"NL command parsing / narration via KotobaLLM 127.0.0.1:4000; no external LLM (ADR-2605215000)\"} {:gate/id \"G8\", :gate/name \"consent-bound\", :gate/rule \"member DID-signed consent before a booking holds a slot or shares contact handles\"}]",
+  :actor/domain "yotei.etzhayyim.com",
+  :actor/adr "2606072200",
+  :actor/tier :tier-b,
+  :actor/purpose
+  "Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept bookings, FREE with no seat tiers and NO booker-data harvesting. Bookings are append-only kotoba Datoms; a proposal overlapping a confirmed booking is structurally refused (no-double-book); confirmations are member-signed. kotoba-EAVT-native, Murakumo-only, no urgency/scarcity dark-patterns.",
+  :actor/supersedes
+  "actor-manifest.jsonld (legacy T1 MCP-Compose / RisingWave-Cypher; deprecated, removed after 1 R-cycle)",
+  :actor/siblings
+  "{:yoro \"public booking page host\", :musubi \"covenant ceremony scheduling\", :society6 \"governance-meeting scheduling\"}",
+  :db/id -1,
+  :actor/lexicons
+  ["com.etzhayyim.yotei.availability"
+   "com.etzhayyim.yotei.booking"
+   "com.etzhayyim.yotei.event"],
+  :actor/status :r1,
+  :actor/charter-rider "{:rider/version \"2.0\", :rider/applied true}",
+  :actor/id "yotei"}]
