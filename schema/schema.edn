@@ -1,0 +1,12 @@
+;; 20-actors/yotei/schema.edn — Datomic/Datascript 互換スキーマ定義（自動生成）
+;; :db/ident 属性定義のリスト。Datomic 固有キー(:db.install/_attribute 等)は使わない。
+;; 手編集禁止 — 再生成すると上書きされる。
+;;
+;; 20-actors/yotei/kotoba/schema.edn (kotoba EAVT schema, :db/ident 属性定義の
+;; ベクタ) はこの登録には含めない -- 既にそれ自体が Datomic schema-install tx-data
+;; として妥当な形なので変換対象外 (edn-datomize-actor-yotei パス, 2026-07-10)。
+;; lex/*.edn (ATProto 風レキシコン EDN 形) は裸キー :lexicon/:id/:defs を持つため
+;; 共通 ns "lex" で wrap した (同じ「ファイル種別」につき ADR generic transform と
+;; 同じ発想で単一 namespace を共有 -- :lex/id が個々のレキシコンを識別する)。
+
+[#:db{:ident :lex/defs, :valueType :db.type/string, :cardinality :db.cardinality/one} #:db{:ident :lex/id, :valueType :db.type/string, :cardinality :db.cardinality/one} #:db{:ident :lex/lexicon, :valueType :db.type/long, :cardinality :db.cardinality/one}]

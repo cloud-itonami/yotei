@@ -1,5 +1,5 @@
-(ns yotei.py.agent
-  "yotei — kotoba-native scheduling commons. 1:1 port of py/agent.py. Append-only bookings over a
+(ns yotei.methods.agent
+  "yotei — kotoba-native scheduling commons. Append-only bookings over a
   kotoba EAVT graph with structural invariants: no-double-book (G4 — an overlapping slot is refused
   at propose AND re-checked at confirm), no-server-key (G5 — only a member signature confirms),
   no-harvest (G2 — booker contact is only an encrypted envelope ref), append-only (G3 — status

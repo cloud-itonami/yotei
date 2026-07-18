@@ -1,10 +1,11 @@
 # etzhayyim-project-yotei
 
-> **kotoba-native (ADR-2606072200).** Canonical manifest is now `manifest.edn`; data model in
-> `kotoba/schema.edn`; logic + tests in `py/` (11 green). Free scheduling commons with append-only
+> **Standalone west repository (ADR-2606072200).** Canonical metadata, data, and schemas are EDN:
+> `manifest.edn`, `data/lex/*.edn`, and `schema/*.edn`. Runtime logic lives under `src/yotei/`,
+> with tests under `test/yotei/`. Free scheduling commons with append-only
 > bookings, a structural **no-double-book** invariant, member-signed confirmation, and **no
-> booker-data harvesting**. Legacy `actor-manifest.jsonld` (RisingWave/Cypher) is DEPRECATED
-> (`DEPRECATED-jsonld.md`). The T1 description below is historical.
+> booker-data harvesting**. JSON/JSON-LD and BPMN are external interchange projections only and
+> live under `wire/`. The T1 description below is historical.
 
 Calendar scheduling & availability coordination — Calendly-like AI Agent。
 

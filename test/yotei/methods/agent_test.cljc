@@ -1,11 +1,11 @@
-(ns yotei.py.test-agent
-  "yotei — scheduling commons tests. 1:1 port of py/test_agent.py. Verifies the structural
+(ns yotei.methods.agent-test
+  "yotei — scheduling commons tests. Verifies the structural
   invariants of ADR-2606072200: G4 no-double-book (overlap refused at propose AND re-checked at
   confirm), G5 no-server-key (only a member signature confirms), G8 consent-bound, G2 no-harvest
   (booker contact only as an encrypted ref), and honest slot generation (booked slots absent)."
   (:require [clojure.test :refer [deftest is]]
             [clojure.string :as str]
-            [yotei.py.agent :as agent]))
+            [yotei.methods.agent :as agent]))
 
 (def CAL "did:web:yotei.etzhayyim.com:calendar:alice")
 
