@@ -32,8 +32,7 @@
 
  :actor/lexicons
  ["com.etzhayyim.yotei.availability"
-  "com.etzhayyim.yotei.booking"
-  "com.etzhayyim.yotei.event"]
+  "com.etzhayyim.yotei.booking"]
 
  :actor/siblings
  {:yoro    "public booking page host"
