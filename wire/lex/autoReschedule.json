@@ -1,36 +1,36 @@
 {
-  "lexicon": 1,
-  "id": "com.etzhayyim.apps.yotei.autoReschedule",
-  "defs": {
-    "main": {
-      "type": "procedure",
-      "description": "Auto-generated stub lexicon (F-Plan F2 bootstrap 2026-04-13). Tighten schema when migrating the app.",
-      "x-bootstrap": true,
-      "input": {
-        "encoding": "application/json",
-        "schema": {
-          "type": "object",
-          "properties": {
-            "eventId": {
-              "type": "string"
+  "lexicon" : 1,
+  "id" : "com.etzhayyim.apps.yotei.autoReschedule",
+  "defs" : {
+    "main" : {
+      "type" : "procedure",
+      "description" : "Auto-generated stub lexicon (F-Plan F2 bootstrap 2026-04-13). Tighten schema when migrating the app.",
+      "x-bootstrap" : true,
+      "input" : {
+        "encoding" : "application/json",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "eventId" : {
+              "type" : "string"
             },
-            "reason": {
-              "type": "string"
+            "reason" : {
+              "type" : "string"
             }
           },
-          "required": []
+          "required" : [ ]
         }
       },
-      "output": {
-        "encoding": "application/json",
-        "schema": {
-          "type": "object",
-          "properties": {
-            "error": {
-              "type": "string"
+      "output" : {
+        "encoding" : "application/json",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "type" : "string"
             }
           },
-          "required": []
+          "required" : [ ]
         }
       }
     }

@@ -4,4 +4,4 @@
  :generator {:repo "etzhayyim/com-etzhayyim-lexicons-bundle"
              :revision "c78dfb9764c952b770d47553cd110768d6f7c336"
              :script "scripts/project-edn-lexicons.clj"}
- :contracts 2}
+ :contracts 25}
