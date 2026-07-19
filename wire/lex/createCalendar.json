@@ -1,45 +1,45 @@
 {
-  "lexicon": 1,
-  "id": "com.etzhayyim.apps.yotei.createCalendar",
-  "defs": {
-    "main": {
-      "type": "procedure",
-      "description": "Auto-generated stub lexicon (F-Plan F2 bootstrap 2026-04-13). Tighten schema when migrating the app.",
-      "x-bootstrap": true,
-      "input": {
-        "encoding": "application/json",
-        "schema": {
-          "type": "object",
-          "properties": {
-            "defaultDurationMin": {
-              "type": "number"
+  "lexicon" : 1,
+  "id" : "com.etzhayyim.apps.yotei.createCalendar",
+  "defs" : {
+    "main" : {
+      "type" : "procedure",
+      "description" : "Auto-generated stub lexicon (F-Plan F2 bootstrap 2026-04-13). Tighten schema when migrating the app.",
+      "x-bootstrap" : true,
+      "input" : {
+        "encoding" : "application/json",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "defaultDurationMin" : {
+              "type" : "number"
             },
-            "name": {
-              "type": "string"
+            "name" : {
+              "type" : "string"
             },
-            "timezone": {
-              "type": "string"
+            "timezone" : {
+              "type" : "string"
             }
           },
-          "required": []
+          "required" : [ ]
         }
       },
-      "output": {
-        "encoding": "application/json",
-        "schema": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
+      "output" : {
+        "encoding" : "application/json",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
             },
-            "name": {
-              "type": "string"
+            "name" : {
+              "type" : "string"
             },
-            "status": {
-              "type": "string"
+            "status" : {
+              "type" : "string"
             }
           },
-          "required": []
+          "required" : [ ]
         }
       }
     }

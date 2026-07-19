@@ -31,7 +31,30 @@
   {:cell/id "confirm"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "consent (G8) → member-signed confirm (G5) → social announce"}]
 
  :actor/lexicons
- ["com.etzhayyim.yotei.availability"
+ ["com.etzhayyim.apps.yotei.analyzeSchedule"
+  "com.etzhayyim.apps.yotei.autoReschedule"
+  "com.etzhayyim.apps.yotei.cancelBooking"
+  "com.etzhayyim.apps.yotei.cancelEvent"
+  "com.etzhayyim.apps.yotei.confirmBooking"
+  "com.etzhayyim.apps.yotei.createCalendar"
+  "com.etzhayyim.apps.yotei.createEvent"
+  "com.etzhayyim.apps.yotei.deleteCalendar"
+  "com.etzhayyim.apps.yotei.describe"
+  "com.etzhayyim.apps.yotei.getAvailability"
+  "com.etzhayyim.apps.yotei.getBooking"
+  "com.etzhayyim.apps.yotei.getCalendar"
+  "com.etzhayyim.apps.yotei.getEvent"
+  "com.etzhayyim.apps.yotei.getOpenSlots"
+  "com.etzhayyim.apps.yotei.health"
+  "com.etzhayyim.apps.yotei.listBookings"
+  "com.etzhayyim.apps.yotei.listCalendars"
+  "com.etzhayyim.apps.yotei.listEvents"
+  "com.etzhayyim.apps.yotei.proposeBooking"
+  "com.etzhayyim.apps.yotei.removeAvailability"
+  "com.etzhayyim.apps.yotei.setAvailability"
+  "com.etzhayyim.apps.yotei.suggestSlots"
+  "com.etzhayyim.apps.yotei.updateEvent"
+  "com.etzhayyim.yotei.availability"
   "com.etzhayyim.yotei.booking"]
 
  :actor/siblings
