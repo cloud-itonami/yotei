@@ -1,6 +1,0 @@
-{:paths ["src" "test"]
- :tasks
- {test {:doc "Run the standalone yotei test suite"
-        :task (clojure "-M:test")}
-  audit {:doc "Parse canonical EDN and enforce wire-only external formats"
-         :task (shell "bb scripts/audit.clj")}}}
