@@ -1,17 +1,47 @@
-# etzhayyim-project-yotei
+# yotei — 予約 / scheduling commons
 
 > **Standalone west repository (ADR-2606072200).** Canonical metadata, data, and schemas are EDN:
 > `manifest.edn`, `data/lex/*.edn`, and `schema/*.edn`. Runtime logic lives under `src/yotei/`,
 > with tests under `test/yotei/`. Free scheduling commons with append-only
-> bookings, a structural **no-double-book** invariant, member-signed confirmation, and **no
+> 予約, a structural **no-double-book** invariant, member-signed confirmation, and **no
 > booker-data harvesting**. JSON/JSON-LD and BPMN are external interchange projections only and
-> live under `wire/`. The T1 description below is historical.
+> live under `wire/`.
 
-Calendar scheduling & availability coordination — Calendly-like AI Agent。
+Calendly の逆——カレンダー所有者が空き時間を公開し、相手がその中から選ぶ。
+無料・座席課金なし・**予約者データを集めない**。
 
-**URL**: `https://yotei.etzhayyim.com`
+**Mount**: `https://app.itonami.cloud/yotei`（owner decision 2026-08-06）
+**App org**: `yotei`（`did:web:app.itonami.cloud:org:yotei`）— 所有権と membership は
+cloud-itonami-app の Organization が持ち、この repo は実装を持つ。
+**Retired**: `yotei.etzhayyim.com` は一度も DNS 解決しなかった。lexicon はこの
+ドメインで mint されているので、消さず `:actor/domain-retired` に記録してある。
+
+## 用語: booking ではなく 予約 / yoyaku（2026-08-06）
+
+Clojure API は `yotei.yoyaku`（`propose-yoyaku` / `confirm-yoyaku` /
+`cancel-yoyaku` / `reschedule-yoyaku`）。旧 `yotei.methods.agent` の
+`*-booking` は改名済み。**wire の文字列キーと lexicon NSID
+（`bookingId`、`com.etzhayyim.apps.yotei.proposeBooking` 等）はまだ旧名**で、
+`data/lex` `wire/lex` `wire/bpmn` の 20 ファイル超を跨ぐので別 commit にしてある。
+コードを読むときこの seam に注意すること。
+
+## 実装済み / 未実装（2026-08-06 実測）
+
+| | 状態 |
+|---|---|
+| `yotei.time` — civil time の整数演算（Hinnant、tz は明示 offset） | ✅ 実装・テスト済み |
+| `yotei.yoyaku` — G4/G5/G2/G3 の 予約 ライフサイクル | ✅ 実装・テスト済み |
+| `yotei.availability` — 週次 window → 空き instant（tz/notice/horizon/closed） | ✅ 実装・テスト済み |
+| `yotei.view` / `yotei.render` — 公開 予約 ページ（jp-go-dds、SSR、JS 不要） | ✅ 実装・テスト済み（design-quality 100.00） |
+| Cloudflare Worker ingress・`app.itonami.cloud` の DNS とルータ | ❌ **未** |
+| 永続化（kotoba EAVT への実書き込み）・consent 署名の実配線 | ❌ **未**（純関数まで） |
+| cloud-itonami-app の `scheduler.clj` をこの repo のクライアントに降格 | ❌ **未** |
+
+`clojure -M:test` → 71 tests / 315 assertions。
+`clojure -Sdeps '{:paths ["src" "resources" "scripts"]}' -M -m preview` で
+`target/preview/*.html` に 4 画面を出力（固定入力・時計を読まないので byte 安定）。
+
 **performerType**: `service`
-**Primary DID**: `did:web:yotei.etzhayyim.com`
 
 ## Architecture
 

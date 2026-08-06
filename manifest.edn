@@ -5,11 +5,40 @@
  :actor/glyph     "予定"
  :actor/tier      :tier-b
  :actor/integrates ["musubi" "shinka" "society6"]
- :actor/domain    "yotei.etzhayyim.com"
- :actor/purpose   "Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept bookings, FREE with no seat tiers and NO booker-data harvesting. Bookings are append-only kotoba Datoms; a proposal overlapping a confirmed booking is structurally refused (no-double-book); confirmations are member-signed. kotoba-EAVT-native, Murakumo-only, no urgency/scarcity dark-patterns."
+ ;; Re-homed 2026-08-06 (owner decision) from yotei.etzhayyim.com, which never
+ ;; resolved, to a path under the shared app host. The old value is kept as a
+ ;; historical alias rather than deleted: it is the `did:web` these lexicons
+ ;; were minted under, and a DID that silently changes identity is worse than
+ ;; one that is recorded as retired.
+ :actor/domain    "app.itonami.cloud"
+ :actor/domain-retired ["yotei.etzhayyim.com"]
+ :actor/purpose   "Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept 予約, FREE with no seat tiers and NO booker-data harvesting. 予約 are append-only kotoba Datoms; a proposal overlapping a confirmed 予約 is structurally refused (no-double-book); confirmations are member-signed. kotoba-EAVT-native, Murakumo-only, no urgency/scarcity dark-patterns."
  :actor/status    :r1
  :actor/adr       "2606072200"
  :actor/wire-projection "wire/actor-manifest.jsonld"
+
+ ;; ── itonami.cloud の default app として (owner decision 2026-08-06) ──────────
+ ;;
+ ;; itonami.cloud の default app は「それぞれ app org に所属する」。所属は
+ ;; **app 側が自分で宣言する**ことにして、host 側に app の一覧を持たせない —
+ ;; 一覧を host が持つと、app を足すたびに 2 箇所を直すことになり、いずれ
+ ;; 片方だけが更新される。ルータの registry はこの宣言群から生成する
+ ;; (west.yml を repos.edn から生成するのと同じ向き)。
+ ;;
+ ;; :app/org は cloud-itonami-app の Organization(テナント)。所有権・membership・
+ ;; did:web はそこが持ち、この repo は実装だけを持つ。両者は :app/org の
+ ;; organization-id で結ぶ。
+ :app/mount       "/yotei"
+ :app/host        "app.itonami.cloud"
+ :app/default?    true
+ :app/org         {:organization/id "yotei"
+                   :organization/name "yotei — 予約"
+                   :organization/did "did:web:app.itonami.cloud:org:yotei"}
+ :app/repo        "cloud-itonami/yotei"
+ :app/surface     [{:path "/yotei/c/:calendar" :method :get  :doc "空いている時間(公開)"}
+                   {:path "/yotei/c/:calendar/select" :method :post :doc "時間を選ぶ"}
+                   {:path "/yotei/c/:calendar/propose" :method :post :doc "申し込む(未確定)"}
+                   {:path "/yotei/health" :method :get :doc "health"}]
 
  :actor/charter-rider
  {:rider/version "2.0"
