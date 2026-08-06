@@ -39,10 +39,34 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `yotei.view` / `yotei.render` — 公開 予約 ページ（jp-go-dds、SSR、JS 不要） | ✅ design-quality 100.00 |
 | `yotei.edge.*` — Cloudflare Worker、KV 永続化 | ✅ **本番稼働中** |
 | **`https://app.itonami.cloud/yotei/c/<calendar>`** | ✅ **live** |
+| `yotei.schedule` — 招待/RSVP の予定（cloud-itonami-app から統合） | ✅ |
+| `scripts/calendar.cljs` — カレンダー作成 CLI（検証してから公開） | ✅ |
+| `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
 | member 署名の確定 UI（所有者側）・封筒暗号化の実配線 | ❌ 未 |
-| cloud-itonami-app の `scheduler.clj` の統合 | ❌ 未 |
 
-`clojure -M:test` → 85 tests / 346 assertions。
+`clojure -M:test` → 94 tests / 385 assertions。
+
+## 公開中のカレンダー
+
+| リンク | |
+|---|---|
+| `https://app.itonami.cloud/yotei/c/jun` | 30分の打ち合わせ |
+| `https://app.itonami.cloud/yotei/c/jun-15min` | 15分の相談 |
+| `https://app.itonami.cloud/yotei/c/jun-review` | 60分の設計レビュー |
+
+正本は `calendars/jun.edn`。**`:windows` は動作確認用の仮の値**なので、実際に
+人を招く前に本当の空き時間に直すこと。
+
+```bash
+nbb --classpath src scripts/calendar.cljs put calendars/jun.edn --dry-run  # 何枠出るか
+nbb --classpath src scripts/calendar.cljs put calendars/jun.edn            # 公開
+nbb --classpath src scripts/calendar.cljs list                             # 一覧
+nbb scripts/e2e_public.cljs <url>                                          # 実ブラウザ検証
+```
+
+**1 エントリ = 1 リンク。** Calendly の単位が人ではなく「用件の種類」なのと同じ。
+`:name` を省くと見出しもタブのタイトルも owner 名だけになり、複数リンクを持つと
+相手が区別できない。
 
 ## 運用
 

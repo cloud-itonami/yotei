@@ -159,6 +159,17 @@
         (is (not (str/includes? s ":action")))
         (is (str/includes? s (str ":value \"" expected "\"")))))))
 
+(deftest a-named-calendar-leads-with-its-name-not-the-owner
+  ;; Three calendars owned by one person rendered three identical headings and
+  ;; three identical tab titles; only the body differed. Someone holding two of
+  ;; the links could not tell them apart.
+  (let [named (assoc cal :yotei/name "15分の相談")
+        txt (text-of (view/yoyaku-page (ctx :calendar named)))]
+    (is (str/includes? txt "15分の相談"))
+    (is (str/includes? txt "アリス") "the owner is still named, just not as the heading"))
+  (testing "and an unnamed calendar keeps the old heading"
+    (is (str/includes? (text-of (view/yoyaku-page (ctx))) "アリスの予定を押さえる"))))
+
 (deftest the-page-is-a-list-of-forms-so-it-works-without-javascript
   (let [tags (tags-of (view/yoyaku-page (ctx)))]
     (is (contains? tags :form))
