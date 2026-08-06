@@ -12,8 +12,8 @@
     "90-docs/rules/compliance/per-did-kyumei-shinka-autonomy.md",
     "90-docs/platform/260403-live-data-kyumei-shinka-consolidated.md"
   ],
-  "convoSystemPrompt": "You are the Yotei agent — a calendar scheduling and availability coordinator. You manage events, availability windows, and slot bookings via DID-addressed booking links. You resolve scheduling conflicts, send reminders, and coordinate across timezones. Query the graph for Calendar, Availability, Event, and Booking nodes.",
-  "description": "DID-addressed calendar scheduling and availability coordination. Calendly-like AI Agent with event creation, slot booking, reminder dispatch, and timezone-aware availability management.",
+  "convoSystemPrompt": "You are the Yotei agent — a calendar scheduling and availability coordinator. You manage events, availability windows, and slot 予約 via DID-addressed 予約 links. You resolve scheduling conflicts, send reminders, and coordinate across timezones. Query the graph for Calendar, Availability, Event, and 予約 nodes.",
+  "description": "DID-addressed calendar scheduling and availability coordination. Calendly-like AI Agent with event creation, slot 予約, reminder dispatch, and timezone-aware availability management.",
   "displayName": "Yotei — Calendar Scheduling & Availability",
   "domainKnowledgeRequired": true,
   "runtime": "k8s-langserver",
@@ -46,7 +46,7 @@
         },
         {
           "args": {
-            "template": "MERGE (e:YoteiEvent {did: $did}) SET e.title = $input.record.title, e.ownerDid = $input.record.ownerDid, e.startAt = $input.record.startAt, e.endAt = $input.record.endAt, e.timezone = $input.record.timezone, e.status = 'confirmed', e.repo = $did, e.collection = 'com.etzhayyim.apps.yotei.event'"
+            "template": "MERGE (e:YoteiEvent {did: $did}) SET e.title = $input.record.title, e.ownerDid = $input.record.ownerDid, e.startAt = $input.record.startAt, e.endAt = $input.record.endAt, e.timezone = $input.record.timezone, e.status = 'confirmed', e.repo = $did, e.collection = 'cloud.itonami.apps.yotei.event'"
           },
           "depends_on": [],
           "fn": "graph.write",
@@ -64,7 +64,7 @@
         }
       ],
       "trigger": {
-        "nsid": "com.etzhayyim.apps.yotei.createEvent",
+        "nsid": "cloud.itonami.apps.yotei.createEvent",
         "type": "xrpc"
       }
     },
@@ -79,22 +79,22 @@
         },
         {
           "args": {
-            "message": "Booking request: $input.record\n\nAvailable slot: $slot.rows\n\nConfirm booking validity and generate confirmation message for both host and guest."
+            "message": "予約 request: $input.record\n\nAvailable slot: $slot.rows\n\nConfirm 予約 validity and generate confirmation message for both host and guest."
           },
           "fn": "agent.chat",
           "id": "confirm"
         },
         {
           "args": {
-            "template": "MERGE (b:YoteiBooking {did: $did}) SET b.hostDid = $input.record.hostDid, b.guestDid = $input.record.guestDid, b.startAt = $input.record.startAt, b.endAt = $input.record.endAt, b.status = 'confirmed', e.repo = $did, b.collection = 'com.etzhayyim.apps.yotei.booking'"
+            "template": "MERGE (b:Yotei予約 {did: $did}) SET b.hostDid = $input.record.hostDid, b.guestDid = $input.record.guestDid, b.startAt = $input.record.startAt, b.endAt = $input.record.endAt, b.status = 'confirmed', e.repo = $did, b.collection = 'cloud.itonami.apps.yotei.yoyaku'"
           },
           "depends_on": [],
           "fn": "graph.write",
-          "id": "writeBooking"
+          "id": "write予約"
         },
         {
           "args": {
-            "template": "Booking confirmed: $confirm.text"
+            "template": "予約 confirmed: $confirm.text"
           },
           "depends_on": [
             "confirm"
@@ -105,7 +105,7 @@
       ],
       "trigger": {
         "collections": [
-          "com.etzhayyim.apps.yotei.booking"
+          "cloud.itonami.apps.yotei.yoyaku"
         ],
         "type": "subscribeRepos"
       }
@@ -172,7 +172,7 @@
             "params": {
               "actorName": "yotei",
               "bucket": "6h",
-              "collection": "com.etzhayyim.apps.yotei.coverageSnapshot",
+              "collection": "cloud.itonami.apps.yotei.coverageSnapshot",
               "latestSeq": 0,
               "nanoid": "unyrsfan",
               "nodeCount": "$coverageNodes.rows[0].nodeCount"
@@ -230,7 +230,7 @@
         }
       ],
       "trigger": {
-        "nsid": "com.etzhayyim.apps.yotei.coverage.get",
+        "nsid": "cloud.itonami.apps.yotei.coverage.get",
         "type": "xrpc"
       }
     }
@@ -244,7 +244,7 @@
       "send-reminder",
       "resolve-conflicts"
     ],
-    "description": "AI Agent for calendar scheduling, availability coordination, and slot booking. DID-addressed booking links, timezone-aware availability, automated reminders.",
+    "description": "AI Agent for calendar scheduling, availability coordination, and slot 予約. DID-addressed 予約 links, timezone-aware availability, automated reminders.",
     "displayName": "Yotei — Calendar Scheduling & Availability",
     "isBot": true,
     "operator": "etzhayyim.co.jp"
@@ -264,9 +264,9 @@
   "triggers": {
     "subscribeRepos": {
       "collections": [
-        "com.etzhayyim.apps.yotei.event",
-        "com.etzhayyim.apps.yotei.availability",
-        "com.etzhayyim.apps.yotei.booking"
+        "cloud.itonami.apps.yotei.event",
+        "cloud.itonami.apps.yotei.availability",
+        "cloud.itonami.apps.yotei.yoyaku"
       ]
     }
   },

@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.analyzeSchedule",
+  "id" : "cloud.itonami.apps.yotei.analyzeSchedule",
   "defs" : {
     "main" : {
       "type" : "procedure",

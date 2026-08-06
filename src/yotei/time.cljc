@@ -6,7 +6,7 @@
   no-double-book invariant is an interval comparison, which is the one thing an
   integer does perfectly and a date library does with a timezone argument.
 
-  What was missing was the way in and out. A booking page shows a Tuesday in
+  What was missing was the way in and out. A 予約 page shows a Tuesday in
   March and a caller sends `2026-03-10T10:00:00Z`; neither is an integer until
   something converts it. Doing that with the platform's date type would put a
   reader conditional in the middle of the invariant and give the JVM and the
@@ -98,7 +98,7 @@
   Accepts the ISO-8601 shapes a scheduler actually receives: a date alone
   (midnight), `T`-separated minutes, and optional seconds and `Z`. Seconds are
   truncated, not rounded — a slot boundary is a minute, and rounding
-  `10:29:59.9` up to `10:30` would move a booking into the next slot.
+  `10:29:59.9` up to `10:30` would move a 予約 into the next slot.
 
   Only UTC. A trailing offset like `+09:00` is refused rather than ignored,
   because ignoring it would silently book nine hours from where the caller

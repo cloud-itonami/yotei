@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.getBooking",
+  "id" : "cloud.itonami.apps.yotei.listYoyaku",
   "defs" : {
     "main" : {
       "type" : "query",
@@ -9,7 +9,10 @@
       "parameters" : {
         "type" : "params",
         "properties" : {
-          "id" : {
+          "calendarId" : {
+            "type" : "string"
+          },
+          "status" : {
             "type" : "string"
           }
         },
@@ -20,7 +23,10 @@
         "schema" : {
           "type" : "object",
           "properties" : {
-            "error" : {
+            "予約" : {
+              "type" : "string"
+            },
+            "total" : {
               "type" : "string"
             }
           },

@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.createEvent",
+  "id" : "cloud.itonami.apps.yotei.createEvent",
   "defs" : {
     "main" : {
       "type" : "procedure",

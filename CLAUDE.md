@@ -16,30 +16,59 @@ cloud-itonami-app の Organization が持ち、この repo は実装を持つ。
 **Retired**: `yotei.etzhayyim.com` は一度も DNS 解決しなかった。lexicon はこの
 ドメインで mint されているので、消さず `:actor/domain-retired` に記録してある。
 
-## 用語: booking ではなく 予約 / yoyaku（2026-08-06）
+## 用語: 予約 / yoyaku（booking は撤去済み、2026-08-06）
 
-Clojure API は `yotei.yoyaku`（`propose-yoyaku` / `confirm-yoyaku` /
-`cancel-yoyaku` / `reschedule-yoyaku`）。旧 `yotei.methods.agent` の
-`*-booking` は改名済み。**wire の文字列キーと lexicon NSID
-（`bookingId`、`com.etzhayyim.apps.yotei.proposeBooking` 等）はまだ旧名**で、
-`data/lex` `wire/lex` `wire/bpmn` の 20 ファイル超を跨ぐので別 commit にしてある。
-コードを読むときこの seam に注意すること。
+Clojure API・wire キー・lexicon NSID のすべてが `yoyaku`。`data/` `wire/`
+`manifest.edn` に `booking` は 1 件も残っていない（`scripts/rename-booking-to-yoyaku.cljs`）。
+NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
+（`cloud.itonami.apps.yotei.proposeYoyaku` / `cloud.itonami.yotei.yoyaku`）。
+何も deploy されていない今が唯一の無償で改名できる時点だった。
+
+例外: **`com.etzhayyim.encrypted.*` は残す** — G2 が指す封筒型で、他 actor の
+名前空間に属する。自分の prefix が変わったから他人の型を改名するのは、参照を
+移すのではなく壊すことになる。
 
 ## 実装済み / 未実装（2026-08-06 実測）
 
 | | 状態 |
 |---|---|
-| `yotei.time` — civil time の整数演算（Hinnant、tz は明示 offset） | ✅ 実装・テスト済み |
-| `yotei.yoyaku` — G4/G5/G2/G3 の 予約 ライフサイクル | ✅ 実装・テスト済み |
-| `yotei.availability` — 週次 window → 空き instant（tz/notice/horizon/closed） | ✅ 実装・テスト済み |
-| `yotei.view` / `yotei.render` — 公開 予約 ページ（jp-go-dds、SSR、JS 不要） | ✅ 実装・テスト済み（design-quality 100.00） |
-| Cloudflare Worker ingress・`app.itonami.cloud` の DNS とルータ | ❌ **未** |
-| 永続化（kotoba EAVT への実書き込み）・consent 署名の実配線 | ❌ **未**（純関数まで） |
-| cloud-itonami-app の `scheduler.clj` をこの repo のクライアントに降格 | ❌ **未** |
+| `yotei.time` — civil time の整数演算（Hinnant、tz は明示 offset） | ✅ |
+| `yotei.yoyaku` — G4/G5/G2/G3 の 予約 ライフサイクル | ✅ |
+| `yotei.availability` — 週次 window → 空き instant（tz/notice/horizon/closed） | ✅ |
+| `yotei.store` — append-only ログ + CAS。`decide-propose`/`decide-confirm` は純関数 | ✅ |
+| `yotei.view` / `yotei.render` — 公開 予約 ページ（jp-go-dds、SSR、JS 不要） | ✅ design-quality 100.00 |
+| `yotei.edge.*` — Cloudflare Worker、KV 永続化 | ✅ **本番稼働中** |
+| **`https://app.itonami.cloud/yotei/c/<calendar>`** | ✅ **live** |
+| member 署名の確定 UI（所有者側）・封筒暗号化の実配線 | ❌ 未 |
+| cloud-itonami-app の `scheduler.clj` の統合 | ❌ 未 |
 
-`clojure -M:test` → 71 tests / 315 assertions。
-`clojure -Sdeps '{:paths ["src" "resources" "scripts"]}' -M -m preview` で
-`target/preview/*.html` に 4 画面を出力（固定入力・時計を読まないので byte 安定）。
+`clojure -M:test` → 85 tests / 346 assertions。
+
+## 運用
+
+```bash
+npx shadow-cljs release worker          # dist/worker.js（dds.css を compile 時に inline）
+npx wrangler deploy --dispatch-namespace ai-gftd-repository-dispatch
+```
+
+`itonami-fleet-dispatch` が `app.itonami.cloud/yotei/*` を受けて `yotei` を
+先頭セグメントとして剥がすので、**この Worker が見るパスは `/c/<calendar>`**。
+script 名・repo 名・`:app/mount` の 3 つは同じ文字列であることで一致している
+（対応表は無い）。
+
+カレンダーは KV の `calendar:<did>` に EDN で置く。
+
+## KV の lost-update は実測済みの制約（未解決）
+
+**KV に atomic CAS は無い。** version 検査は窓を狭めるだけで閉じない。
+2026-08-06 の初回 live テストで**実際に起きた**: 直接書いた confirmed な 予約 を、
+数秒後に届いた propose が古い replica を読んで append し上書きした。予約 は消え、
+その枠が再び提示された。**読みが古いまま 5 分以上続いた**ので「1〜2 秒」という
+理解は誤り。エラーは出ない —— 予約 が黙って消えるだけ。
+
+恒久対応はカレンダーごとの Durable Object（CLAUDE.md が「DO は直列化器として使い、
+ストレージは共有バックエンドへ」と定める形）。`YoteiStore` protocol がその差し替えを
+書き直しでなく backend 追加にするための継ぎ目。
 
 **performerType**: `service`
 

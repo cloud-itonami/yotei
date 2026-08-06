@@ -1,0 +1,10 @@
+{
+  "name": "yotei",
+  "private": true,
+  "comment": "shadow-cljs compiles src/yotei/edge/worker.cljs -> dist/worker.js, the 予約 page served at app.itonami.cloud/yotei through itonami-fleet-dispatch.",
+  "scripts": { "build": "shadow-cljs release worker" },
+  "devDependencies": {
+    "shadow-cljs": "^2.28.20",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "yotei",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-07-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Uploaded into ai-gftd-repository-dispatch with --dispatch-namespace, so
+  // this Worker has no URL of its own. itonami-fleet-dispatch reaches it as
+  // the first path segment and strips it:
+  //
+  //     app.itonami.cloud/yotei/c/alice  ->  this Worker sees /c/alice
+  //
+  // The script name must stay `yotei`, because the router dispatches on the
+  // repository name and manifest.edn's :app/mount says "/yotei". Those three
+  // agree by being the same string, not by a mapping table.
+  "kv_namespaces": [
+    { "binding": "YOYAKU", "id": "f1c62eb9ebb3436ea1ab8aaf92e7fee7" }
+  ],
+  "vars": { "YOTEI_HOST": "app.itonami.cloud" }
+}
