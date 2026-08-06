@@ -144,8 +144,18 @@
 
   One contact field, and it is a free-text handle rather than a typed email
   input, because G2 forbids building a profile out of the person reserving —
-  yotei never validates, normalizes, enriches or stores it as a plain
-  attribute. It becomes an encrypted envelope ref, and the label says so."
+  yotei never validates, normalizes, enriches or stores it as a profile
+  attribute.
+
+  **The label says only what is true today.** It used to say the handle was
+  encrypted; it is not. `yotei.edge.worker` stores it under the marker
+  `unencrypted-pending-envelope:` because the envelope service G2 points at is
+  not wired yet, and the marker was chosen precisely so nobody could mistake
+  the state — and then the page told visitors the opposite. Promising a
+  stranger encryption that does not exist is worse than asking for the handle
+  plainly, so the promise waits until the envelope does. When
+  `contactRef` really becomes `com.etzhayyim.encrypted.*`, this line changes
+  with it and not before."
   [{:keys [owner-label calendar start-epoch-min duration-min]}]
   (let [cal (merge av/defaults calendar)
         offset (:yotei/tz-offset-min cal)
@@ -171,8 +181,8 @@
                        :for "yoyaku-contact"
                        :requirement "必須" :required? true
                        :support-id "yoyaku-contact-support"
-                       :support (str "当日の連絡だけに使います。暗号化して預かり、"
-                                     owner-label "以外は読めません。")}
+                       :support (str "この予定の連絡にだけ使います。" owner-label
+                                     "が受け取ります。他の用途には使いません。")}
                       (dds/input-text {:id "yoyaku-contact" :name "contact"
                                        :required true
                                        :aria-describedby "yoyaku-contact-support"}))
