@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.cancelEvent",
+  "id" : "cloud.itonami.apps.yotei.cancelEvent",
   "defs" : {
     "main" : {
       "type" : "procedure",

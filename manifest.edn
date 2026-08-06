@@ -46,47 +46,47 @@
 
  :actor/gates
  [{:gate/id "G1"  :gate/name "no-tier"               :gate/rule "free; no paid seat tiers / subscription; no external inflow (§1.3)"}
-  {:gate/id "G2"  :gate/name "no-harvest"            :gate/rule "no booker profiling / data resale / CRM funnel; booking PII → com.etzhayyim.encrypted.* and used only to hold the slot (ADR-2605181100)"}
-  {:gate/id "G3"  :gate/name "kotoba-eavt-native"    :gate/rule "calendar/availability/event/booking are append-only kotoba Datoms; no RisingWave/SQL/Cypher (corrects legacy manifest)"}
-  {:gate/id "G4"  :gate/name "no-double-book"        :gate/rule "a proposal whose slot overlaps an existing confirmed booking on the same calendar is structurally refused (not last-write-wins)"}
-  {:gate/id "G5"  :gate/name "no-server-key"         :gate/rule "booking confirmations are member-signed (passkey/ERC-4337); yotei holds no key (ADR-2605231525); server signature refused"}
+  {:gate/id "G2"  :gate/name "no-harvest"            :gate/rule "no booker profiling / data resale / CRM funnel; 予約 PII → com.etzhayyim.encrypted.* and used only to hold the slot (ADR-2605181100)"}
+  {:gate/id "G3"  :gate/name "kotoba-eavt-native"    :gate/rule "calendar/availability/event/予約 are append-only kotoba Datoms; no RisingWave/SQL/Cypher (corrects legacy manifest)"}
+  {:gate/id "G4"  :gate/name "no-double-book"        :gate/rule "a proposal whose slot overlaps an existing confirmed 予約 on the same calendar is structurally refused (not last-write-wins)"}
+  {:gate/id "G5"  :gate/name "no-server-key"         :gate/rule "予約 confirmations are member-signed (passkey/ERC-4337); yotei holds no key (ADR-2605231525); server signature refused"}
   {:gate/id "G6"  :gate/name "wellbecoming-anti-dark":gate/rule "honest availability only; no scarcity/urgency ('3 spots left') / FOMO nudges; optimize coordination, never conversion"}
   {:gate/id "G7"  :gate/name "murakumo-only"         :gate/rule "NL command parsing / narration via KotobaLLM 127.0.0.1:4000; no external LLM (ADR-2605215000)"}
-  {:gate/id "G8"  :gate/name "consent-bound"         :gate/rule "member DID-signed consent before a booking holds a slot or shares contact handles"}]
+  {:gate/id "G8"  :gate/name "consent-bound"         :gate/rule "member DID-signed consent before a 予約 holds a slot or shares contact handles"}]
 
  :actor/cells
- [{:cell/id "calendar"  :cell/kind :datalog   :cell/runtime :kotoba :cell/doc "calendar + availability + event + booking Datoms"}
-  {:cell/id "propose"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "availability → free slots (no-double-book G4) → proposed booking"}
+ [{:cell/id "calendar"  :cell/kind :datalog   :cell/runtime :kotoba :cell/doc "calendar + availability + event + 予約 Datoms"}
+  {:cell/id "propose"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "availability → free slots (no-double-book G4) → proposed 予約"}
   {:cell/id "confirm"   :cell/kind :langgraph :cell/runtime :wasm   :cell/doc "consent (G8) → member-signed confirm (G5) → social announce"}]
 
  :actor/lexicons
- ["com.etzhayyim.apps.yotei.analyzeSchedule"
-  "com.etzhayyim.apps.yotei.autoReschedule"
-  "com.etzhayyim.apps.yotei.cancelBooking"
-  "com.etzhayyim.apps.yotei.cancelEvent"
-  "com.etzhayyim.apps.yotei.confirmBooking"
-  "com.etzhayyim.apps.yotei.createCalendar"
-  "com.etzhayyim.apps.yotei.createEvent"
-  "com.etzhayyim.apps.yotei.deleteCalendar"
-  "com.etzhayyim.apps.yotei.describe"
-  "com.etzhayyim.apps.yotei.getAvailability"
-  "com.etzhayyim.apps.yotei.getBooking"
-  "com.etzhayyim.apps.yotei.getCalendar"
-  "com.etzhayyim.apps.yotei.getEvent"
-  "com.etzhayyim.apps.yotei.getOpenSlots"
-  "com.etzhayyim.apps.yotei.health"
-  "com.etzhayyim.apps.yotei.listBookings"
-  "com.etzhayyim.apps.yotei.listCalendars"
-  "com.etzhayyim.apps.yotei.listEvents"
-  "com.etzhayyim.apps.yotei.proposeBooking"
-  "com.etzhayyim.apps.yotei.removeAvailability"
-  "com.etzhayyim.apps.yotei.setAvailability"
-  "com.etzhayyim.apps.yotei.suggestSlots"
-  "com.etzhayyim.apps.yotei.updateEvent"
-  "com.etzhayyim.yotei.availability"
-  "com.etzhayyim.yotei.booking"]
+ ["cloud.itonami.apps.yotei.analyzeSchedule"
+  "cloud.itonami.apps.yotei.autoReschedule"
+  "cloud.itonami.apps.yotei.cancelYoyaku"
+  "cloud.itonami.apps.yotei.cancelEvent"
+  "cloud.itonami.apps.yotei.confirmYoyaku"
+  "cloud.itonami.apps.yotei.createCalendar"
+  "cloud.itonami.apps.yotei.createEvent"
+  "cloud.itonami.apps.yotei.deleteCalendar"
+  "cloud.itonami.apps.yotei.describe"
+  "cloud.itonami.apps.yotei.getAvailability"
+  "cloud.itonami.apps.yotei.getYoyaku"
+  "cloud.itonami.apps.yotei.getCalendar"
+  "cloud.itonami.apps.yotei.getEvent"
+  "cloud.itonami.apps.yotei.getOpenSlots"
+  "cloud.itonami.apps.yotei.health"
+  "cloud.itonami.apps.yotei.listYoyaku"
+  "cloud.itonami.apps.yotei.listCalendars"
+  "cloud.itonami.apps.yotei.listEvents"
+  "cloud.itonami.apps.yotei.proposeYoyaku"
+  "cloud.itonami.apps.yotei.removeAvailability"
+  "cloud.itonami.apps.yotei.setAvailability"
+  "cloud.itonami.apps.yotei.suggestSlots"
+  "cloud.itonami.apps.yotei.updateEvent"
+  "cloud.itonami.yotei.availability"
+  "cloud.itonami.yotei.yoyaku"]
 
  :actor/siblings
- {:yoro    "public booking page host"
+ {:yoro    "public 予約 page host"
   :musubi  "covenant ceremony scheduling"
   :society6 "governance-meeting scheduling"}}

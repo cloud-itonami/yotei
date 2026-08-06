@@ -37,9 +37,9 @@
                 :app-css (str tokens/bridge-css "\n" view/app-css)}
                body))
 
-(defn booking-document
+(defn yoyaku-document
   "The page you send somebody."
   [{:keys [owner-label] :as ctx}]
   (document {:title (str (str owner-label) "の予定を押さえる — yotei")
              :description "空いている時間を選んで申し込めます。"}
-            (view/booking-page ctx)))
+            (view/yoyaku-page ctx)))

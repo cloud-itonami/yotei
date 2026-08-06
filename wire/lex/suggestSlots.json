@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.suggestSlots",
+  "id" : "cloud.itonami.apps.yotei.suggestSlots",
   "defs" : {
     "main" : {
       "type" : "procedure",

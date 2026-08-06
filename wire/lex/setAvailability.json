@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.setAvailability",
+  "id" : "cloud.itonami.apps.yotei.setAvailability",
   "defs" : {
     "main" : {
       "type" : "procedure",

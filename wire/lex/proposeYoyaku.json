@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.proposeBooking",
+  "id" : "cloud.itonami.apps.yotei.proposeYoyaku",
   "defs" : {
     "main" : {
       "type" : "procedure",

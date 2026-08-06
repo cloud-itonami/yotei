@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.autoReschedule",
+  "id" : "cloud.itonami.apps.yotei.autoReschedule",
   "defs" : {
     "main" : {
       "type" : "procedure",

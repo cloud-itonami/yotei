@@ -33,7 +33,7 @@
     s))
 
 (defn draft-observation-post
-  "A dry-run observation post over yotei's own domain (Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept bookings, FREE with no seat tiers…)."
+  "A dry-run observation post over yotei's own domain (Calendly-inverse scheduling commons — calendar owners (member or actor) publish availability and accept 予約, FREE with no seat tiers…)."
   ([subject body sources] (draft-observation-post subject body sources ""))
   ([subject body sources author]
    (let [srcs (enough-sources sources)

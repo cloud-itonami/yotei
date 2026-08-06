@@ -99,7 +99,14 @@
                            :let [start (:yotei/start-epoch-min o)
                                  hhmm (local-hhmm offset start)]]
                        [:li {:class "yoyaku__time"}
-                        [:form {:method "post" :action "select"}
+                        ;; No :action — the form posts to the URL it was
+                        ;; served from. A relative "select" would resolve
+                        ;; against /yotei/c/jun to /yotei/c/select and drop the
+                        ;; calendar, and an absolute path would make this view
+                        ;; know where it is mounted. `step` says which stage
+                        ;; this is instead.
+                        [:form {:method "post"}
+                         [:input {:type "hidden" :name "step" :value "select"}]
                          [:input {:type "hidden" :name "start"
                                   :value (t/format-instant start)}]
                          [:input {:type "hidden" :name "minutes"
@@ -115,7 +122,7 @@
                                                        " から"
                                                        (:yotei/duration-min o) "分")})]]))])))))
 
-(defn booking-page
+(defn yoyaku-page
   "The whole page a visitor lands on."
   [{:keys [owner-label purpose calendar openings]}]
   (let [cal (merge av/defaults calendar)
@@ -151,7 +158,9 @@
        (date-label date) " " (local-hhmm offset start-epoch-min)
        "〜" (local-hhmm offset (+ start-epoch-min duration-min))]
       (str " （UTC" (offset-label offset) "・" duration-min "分）")]
-     [:form {:class "yoyaku__form" :method "post" :action "propose"}
+     ;; Same URL, different step — see `yoyaku-page`.
+     [:form {:class "yoyaku__form" :method "post"}
+      [:input {:type "hidden" :name "step" :value "propose"}]
       [:input {:type "hidden" :name "start" :value iso}]
       [:input {:type "hidden" :name "minutes" :value (str duration-min)}]
       (dds/form-field {:label "お名前" :for "yoyaku-name"

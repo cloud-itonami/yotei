@@ -89,12 +89,12 @@
      :required-gates common-gates
      :trigger "manifest cell availability"
      :ceiling "Manifest-driven migration scaffold; explicit execution stays in runtime methods"}
-  :booking {:legacy-cell "com-etzhayyim-apps-yotei-booking"
+  :予約 {:legacy-cell "com-etzhayyim-apps-yotei-予約"
      :phase :event
      :murakumo-node "reuben"
-     :collections [(collection "booking")]
+     :collections [(collection "予約")]
      :required-gates common-gates
-     :trigger "manifest cell booking"
+     :trigger "manifest cell 予約"
      :ceiling "Manifest-driven migration scaffold; explicit execution stays in runtime methods"}
 })
 

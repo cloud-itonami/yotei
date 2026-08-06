@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="Definitions_yotei_list_yoyakus" targetNamespace="https://etzhayyim.ai/bpmn/yotei" exporter="hand-written" exporterVersion="1.0">
+  <bpmn:process id="yotei_list_yoyakus" name="listYoyaku" isExecutable="true">
+    <bpmn:startEvent id="Start"><bpmn:outgoing>Flow_Start_Task</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_Start_Task" sourceRef="Start" targetRef="Task_listYoyaku"/>
+    <bpmn:serviceTask id="Task_listYoyaku" name="listYoyaku">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="xrpc.cloud.itonami.apps.yotei.listYoyaku" retries="2"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start_Task</bpmn:incoming><bpmn:outgoing>Flow_Task_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_Task_End" sourceRef="Task_listYoyaku" targetRef="End"/>
+    <bpmn:endEvent id="End"><bpmn:incoming>Flow_Task_End</bpmn:incoming></bpmn:endEvent>
+  </bpmn:process>
+</bpmn:definitions>

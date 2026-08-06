@@ -5,7 +5,7 @@
     <bpmn:sequenceFlow id="Flow_Start_Task" sourceRef="Start" targetRef="Task_createCalendar"/>
     <bpmn:serviceTask id="Task_createCalendar" name="createCalendar">
       <bpmn:extensionElements>
-        <zeebe:taskDefinition type="xrpc.com.etzhayyim.apps.yotei.createCalendar" retries="2"/>
+        <zeebe:taskDefinition type="xrpc.cloud.itonami.apps.yotei.createCalendar" retries="2"/>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Start_Task</bpmn:incoming><bpmn:outgoing>Flow_Task_End</bpmn:outgoing>
     </bpmn:serviceTask>

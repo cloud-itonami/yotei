@@ -1,6 +1,6 @@
 {
   "lexicon" : 1,
-  "id" : "com.etzhayyim.apps.yotei.getEvent",
+  "id" : "cloud.itonami.apps.yotei.getEvent",
   "defs" : {
     "main" : {
       "type" : "query",
