@@ -105,11 +105,19 @@
     (is (not (str/includes? (pr-str tree) "checkbox")))
     (is (seq names))))
 
-(deftest contact-field-says-what-happens-to-it
+(deftest contact-field-does-not-promise-encryption-it-does-not-have
+  ;; This test used to assert the opposite — that the page said "暗号化" — and
+  ;; it passed while the Worker stored the handle as
+  ;; `unencrypted-pending-envelope:<plaintext>` in KV. A test can pin a lie as
+  ;; firmly as a truth. Restore the claim only when contactRef is genuinely an
+  ;; encrypted envelope ref.
   (let [txt (text-of (view/confirm-form
                       (ctx :start-epoch-min (t/parse-instant "2026-03-09T01:00:00Z")
                            :duration-min 30)))]
-    (is (str/includes? txt "暗号化"))))
+    (is (not (str/includes? txt "暗号化")))
+    (is (not (str/includes? txt "読めません")))
+    (testing "but it does say what the handle is for"
+      (is (str/includes? txt "連絡にだけ使います")))))
 
 ;; ── timezone is never implicit ──
 (deftest every-page-that-shows-a-time-shows-the-offset
