@@ -66,7 +66,7 @@
           body-bg (.evaluate page "getComputedStyle(document.body).backgroundColor")
           _ (check! "CSS applied (button has real width)" (> btn-w 40) (str btn-w "px"))
           _ (check! "no console errors" (empty? @console-errors)
-                    (str/join "; " (take 2 @console-errors)))
+                    (str/join " | " (take 3 @console-errors)))
 
           first-label (.textContent (first slots))
           first-start (.evaluate page "(() => document.querySelector('input[name=start]').value)()")

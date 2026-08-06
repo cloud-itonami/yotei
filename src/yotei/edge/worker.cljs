@@ -41,6 +41,7 @@
   (js/Response.
    (page/->page {:title title :description description :lang "ja"
                  :css dds-css
+                 :head view/head-extras
                  :app-css (str tokens/bridge-css "\n" view/app-css)}
                 body)
    #js {:status status
@@ -94,7 +95,20 @@
                                         :purpose (:yotei/purpose cal)
                                         :calendar cal
                                         :openings os})
-                    {:title (str label "の予定を押さえる — yotei")
+                    ;; The title distinguishes the links. Three calendars owned
+                    ;; by one person rendered three identical titles, so a
+                    ;; visitor holding two of them could not tell which tab was
+                    ;; which — the duration and purpose differed only in the
+                    ;; body.
+                    ;; Named calendars use their name; the duration is not
+                    ;; appended, because a name like "15分の相談" already says
+                    ;; it and "15分の相談（15分）" reads like a bug. Unnamed
+                    ;; ones fall back to the owner plus the length, which is
+                    ;; what distinguishes them when nothing else does.
+                    {:title (if-let [n (not-empty (str (:yotei/name cal)))]
+                              (str n " — " label " — yotei")
+                              (str label "の予定を押さえる（"
+                                   (:yotei/slot-min cal) "分） — yotei"))
                      :description "空いている時間を選んで申し込めます。"})))))))
 
 (defn- handle-select

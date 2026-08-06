@@ -42,6 +42,7 @@
   "
 .yoyaku { max-width: 44rem; margin: 0 auto; padding: var(--hig-spacing-6) var(--hig-spacing-content-margin) var(--hig-spacing-10); }
 .yoyaku__lede { color: var(--hig-color-secondary-label); margin: var(--hig-spacing-2) 0 0; }
+.yoyaku__owner { color: var(--hig-color-secondary-label); font-weight: 700; margin: var(--hig-spacing-1) 0 0; }
 .yoyaku__facts { display: flex; flex-wrap: wrap; gap: var(--hig-spacing-2); margin: var(--hig-spacing-4) 0 0; padding: 0; list-style: none; }
 .yoyaku__day { margin: var(--hig-spacing-6) 0 0; }
 .yoyaku__date { font-size: var(--hig-text-headline-font-size); line-height: var(--hig-text-headline-line-height); font-weight: 700; margin: 0 0 var(--hig-spacing-3); padding-bottom: var(--hig-spacing-2); border-bottom: var(--hig-hairline) solid var(--hig-color-separator); }
@@ -52,6 +53,26 @@
 .yoyaku__form { display: grid; gap: var(--hig-spacing-4); margin: var(--hig-spacing-5) 0 0; }
 .yoyaku__slot { font-weight: 700; font-variant-numeric: tabular-nums; }
 ")
+
+(def head-extras
+  "Extra <head> elements every 予約 page carries.
+
+  One inline favicon, and it is here for a reason that is not decoration. A
+  browser asks the *origin root* for /favicon.ico on every page load. This app
+  is mounted at a path under a dispatch router whose actor-name pattern
+  rejects a dot, so that automatic request comes back 400 and lands in the
+  console of every visitor — a real error, logged on a page that is otherwise
+  error-free, pointing at nothing they can act on.
+
+  Declaring an icon inline stops the request being made at all. It is a data
+  URI rather than a file so the page stays self-contained: no second request
+  to fail, and nothing to deploy alongside."
+  [[:link {:rel "icon"
+           :href (str "data:image/svg+xml,"
+                      "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E"
+                      "%3Ccircle cx='8' cy='8' r='7' fill='none' stroke='%230031d8' stroke-width='1.5'/%3E"
+                      "%3Cpath d='M8 4v4.4l3 1.8' fill='none' stroke='%230031d8' "
+                      "stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")}]])
 
 (def ^:private weekday-ja
   {:sunday "日" :monday "月" :tuesday "火" :wednesday "水"
@@ -129,7 +150,12 @@
         offset (:yotei/tz-offset-min cal)
         grouped (av/by-local-day cal openings)]
     [:main {:class "yoyaku"}
-     (dds/heading 1 (str owner-label "の予定を押さえる") {:size "32"})
+     (dds/heading 1 (if (seq (str (:yotei/name cal)))
+                     (str (:yotei/name cal))
+                     (str owner-label "の予定を押さえる"))
+                  {:size "32"})
+     (when (seq (str (:yotei/name cal)))
+       [:p {:class "yoyaku__owner"} owner-label])
      (when (seq purpose) [:p {:class "yoyaku__lede"} purpose])
      [:ul {:class "yoyaku__facts"}
       [:li (dds/chip-label (str (:yotei/slot-min cal) "分"))]

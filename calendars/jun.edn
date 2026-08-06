@@ -1,0 +1,58 @@
+;; 川崎の公開カレンダー。`nbb scripts/calendar.cljs put calendars/jun.edn` で反映。
+;;
+;; 1 ファイルに複数書けるが、**1 エントリ = 1 リンク**。Calendly の単位が人では
+;; なく「用件の種類」なのと同じで、15分の相談と60分のレビューは長さも時間帯も
+;; 別なので、同じ人が持つ別のカレンダーになる。segment がそのまま URL。
+;;
+;; ⚠ :windows は実際の予定を聞いて置いたものではない。**動くことを確かめるための
+;;   仮の値**なので、本当に人を招く前に実際の空き時間に直すこと。
+;;   `--dry-run` を付ければ書き込まずに何枠出るかだけ確認できる。
+;;
+;; :name は「用件の種類」の名前。省略できるが、同じ人が複数リンクを持つと
+;; ページ見出しもタブのタイトルも同一になり、2つ開いた相手が区別できない。
+;;
+;; :tz-offset-min 540 = UTC+09:00。offset であって timezone ではない（DST を
+;; 知らない）。日本は DST が無いので 540 固定で正しいが、他国の owner を足す
+;; ときはここが効いてくる。
+
+[{:segment "jun"
+  :name "30分の打ち合わせ"
+  :owner-label "川崎"
+  :purpose "30分の打ち合わせです。空いている時間を選んでください。"
+  :tz-offset-min 540
+  :slot-min 30
+  :notice-min 60          ; 1時間前まで
+  :horizon-days 60
+  :windows [[:monday    "10:00" "12:00"]
+            [:tuesday   "14:00" "17:00"]
+            [:wednesday "10:00" "12:00"]
+            [:thursday  "14:00" "17:00"]
+            [:friday    "10:00" "12:00"]]}
+
+ {:segment "jun-15min"
+  :name "15分の相談"
+  :owner-label "川崎"
+  :purpose "15分の短い相談です。用件がはっきりしているときはこちらへ。"
+  :tz-offset-min 540
+  :slot-min 15
+  ;; 短い用件は直前でも受けられる。notice を短くするのは親切であって
+  ;; 煽りではない（G6 が禁じるのは「あと2枠」の類）。
+  :notice-min 30
+  :horizon-days 30
+  :windows [[:monday    "09:00" "10:00"]
+            [:tuesday   "09:00" "10:00"]
+            [:wednesday "09:00" "10:00"]
+            [:thursday  "09:00" "10:00"]
+            [:friday    "09:00" "10:00"]]}
+
+ {:segment "jun-review"
+  :name "60分の設計レビュー"
+  :owner-label "川崎"
+  :purpose "60分の設計レビューです。事前に読むものがあれば用件に書いてください。"
+  :tz-offset-min 540
+  :slot-min 60
+  ;; 長い枠は準備が要るので前日まで。
+  :notice-min 1440
+  :horizon-days 45
+  :windows [[:tuesday "13:00" "17:00"]
+            [:thursday "13:00" "17:00"]]}]

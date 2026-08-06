@@ -34,6 +34,7 @@
                 :lang "ja"
                 :css @dds-css
                 :dark? (boolean dark?)
+                :head view/head-extras
                 :app-css (str tokens/bridge-css "\n" view/app-css)}
                body))
 
