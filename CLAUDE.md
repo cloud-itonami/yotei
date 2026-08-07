@@ -45,9 +45,11 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
 | `yotei.envelope` — ECDH P-256 + AES-GCM の封筒、ECDSA 署名 | ✅ |
 | `scripts/owner.cljs` — owner の keygen / list（復号）/ confirm（署名） | ✅ |
+| `yotei.ics` — 確定した 予約 の .ics（RFC 5545、UTC） | ✅ |
+| 訪問者の状態ページ `/c/<seg>/y/<id>` — 状態 / .ics / 取消 | ✅ |
 | owner console（web） | ❌ 未（下記の理由で CLI が先） |
 
-`clojure -M:test` → 98 tests / 393 assertions。
+`clojure -M:test` → 103 tests / 407 assertions。
 `nbb --classpath src scripts/envelope_test.cljs` → 封筒と署名の 16 検査（WebCrypto は
 JVM に無いので JVM suite の外）。
 
@@ -71,6 +73,26 @@ nbb --classpath src scripts/owner.cljs list    <segment>            # 一覧 + �
 nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId> # 署名して確定
 nbb --classpath src scripts/owner.cljs watch   <segment>            # 新着を待つ（macOS 通知）
 ```
+
+## 訪問者の側（2026-08-07）
+
+**申し込んだ人に何も届かない**という穴を塞いだ。yotei は相手にメールを送れない
+（連絡先は owner の鍵で封じてあり、yotei は鍵を持たない）。代わりに**戻れる URL**
+を渡す:
+
+| | |
+|---|---|
+| `GET /c/<seg>/y/<id>` | 状態（承認待ち / 確定 / 取消） |
+| `GET /c/<seg>/y/<id>/ics` | 確定していれば .ics、していなければ 409 |
+| `POST` + `step=cancel` | 提案の取り消し。**確定済みは 409** — 確定は相手との約束で、取り消しはボタンではなく会話 |
+
+id は推測できない UUID で、それが認可そのもの（Calendly の確認リンクと同じ形）。
+**名前も連絡先も出さない**ので、転送されても「予定」は見えても「人」は見えない。
+
+`.ics` は **UTC（RFC 5545 FORM #2）**。floating な DTSTART だと東京で 10:00 と
+合意した 予約 が、相手のいる場所の 10:00 に入る。`org-ietf-ical` は `Z` を parse して
+**捨てていた**（round-trip で時刻の意味が変わる実バグ）ので、こちらで回避せず
+**上流を直した**（`c2c965e`）。
 
 ## 通知（2026-08-07）
 

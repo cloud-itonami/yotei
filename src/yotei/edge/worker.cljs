@@ -33,6 +33,7 @@
             [yotei.edge.log-do]
             [yotei.edge.notify :as notify]
             [yotei.envelope :as envelope]
+            [yotei.ics :as ics]
             [yotei.store :as store])
   (:require-macros [yotei.edge.inline :refer [inline-resource]]))
 
@@ -254,7 +255,11 @@
                           (view/proposed-page {:owner-label label
                                              :calendar cal
                                              :start-epoch-min start
-                                             :duration-min minutes})
+                                             :duration-min minutes
+                                               ;; Relative to /c/<seg>/, so the
+                                               ;; page never needs to know the
+                                               ;; host or the mount.
+                                               :status-url (str "y/" yoyaku-id)})
                           {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"}))))))))))))))
 
 (defn handle
@@ -356,6 +361,64 @@
                      ;; "yotei is down" need different reactions from whoever
                      ;; was sent the link.
                      (json-response {:error "no such calendar" :calendar segment} 404)
+
+                     ;; /c/<seg>/y/<id>[/ics] — the visitor's own 予約. The
+                     ;; id is an unguessable UUID and is what authorises the
+                     ;; page; there is no session, because the visitor never
+                     ;; had an account and should not need one to learn
+                     ;; whether their appointment happened.
+                     (and (= "y" (nth segs 2 nil)) (>= (count segs) 4))
+                     (let [yid (nth segs 3)
+                           ics? (= "ics" (nth segs 4 nil))]
+                       (-> (do-call env did "read" nil)
+                           (.then
+                            (fn [j]
+                              (let [entry (->> (get j "entries")
+                                               (reduce (fn [acc e]
+                                                         (assoc acc (get e "yoyakuId") e)) {})
+                                               (#(get % yid)))
+                                    label (or (:yotei/owner-label cal) "この人")]
+                                (cond
+                                  (nil? entry)
+                                  (html-response
+                                   (view/refused-page {:reason "その予約は見つかりません。URL をご確認ください。"})
+                                   {:status 404 :title "見つかりません — yotei"})
+
+                                  ;; .ics only for a confirmed 予約: handing
+                                  ;; someone a calendar file for something that
+                                  ;; has not been agreed puts a meeting in their
+                                  ;; diary that may never happen.
+                                  ics?
+                                  (if (= "confirmed" (get entry "status"))
+                                    (js/Response. (ics/ics-str cal entry)
+                                                  #js {:headers
+                                                       #js {"content-type" "text/calendar; charset=utf-8"
+                                                            "content-disposition" "attachment; filename=\"yotei.ics\""
+                                                            "cache-control" "no-store"}})
+                                    (json-response {:error "not confirmed yet"} 409))
+
+                                  (= method "POST")
+                                  ;; Cancelling from the visitor's side. Only a
+                                  ;; proposal — a confirmed 予約 is an agreement
+                                  ;; with somebody else, and unpicking it is a
+                                  ;; conversation, not a button.
+                                  (if-not (= "proposed" (get entry "status"))
+                                    (html-response
+                                     (view/refused-page
+                                      {:reason "確定済み・取消済みの予約は、この画面からは変更できません。"})
+                                     {:status 409 :title "変更できません — yotei"})
+                                    (-> (do-call env did "cancel" {:yoyakuId yid})
+                                        (.then (fn [_]
+                                                 (html-response
+                                                  (view/cancelled-page {:owner-label label})
+                                                  {:title "取り消しました — yotei"})))))
+
+                                  :else
+                                  (html-response
+                                   (view/status-page {:owner-label label
+                                                      :calendar cal
+                                                      :entry entry})
+                                   {:title (str "予約の状態 — " label " — yotei")})))))))
 
                      (and (= method "GET") (= 2 (count segs)))
                      (openings-page env did cal)
