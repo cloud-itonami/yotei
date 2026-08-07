@@ -23,6 +23,10 @@
   :owner-sig-key {"key_ops" ["verify"], "ext" true, "kty" "EC", "x" "Uy7jhTNzhn8o8-aXapYmbcFYkg-axxaqqsrY5ic55fE", "y" "_CluAW9sBV6lj7buZijfnEskhpzwX-TOcyQKs8V841s", "crv" "P-256"}
   :owner-label "川崎"
   :purpose "30分の打ち合わせです。空いている時間を選んでください。"
+  ;; 予約 が入ったら metadata を POST する先（任意）。連絡先は入らない —
+  ;; 封のままで、開くには owner の鍵が要る。省略すると通知しない。
+  ;; :notify-webhook "https://…"   ← 予約 が入ったら POST する先（任意）。
+  ;;   個人情報は入らない（名前も連絡先も封筒の中）。省略すると通知しない。
   :tz-offset-min 540
   :slot-min 30
   :notice-min 60          ; 1時間前まで

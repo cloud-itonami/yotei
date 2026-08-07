@@ -61,7 +61,7 @@
   tests use — this file holds no second opinion about what a window is."
   [{:keys [segment name owner-label owner-did purpose tz-offset-min slot-min
            notice-min horizon-days windows closed-dates
-           owner-enc-key owner-sig-key]
+           owner-enc-key owner-sig-key notify-webhook]
     :or {tz-offset-min 540 slot-min 30 notice-min 60 horizon-days 60
          closed-dates #{}}}]
   (when-not (and segment (re-matches SEGMENT segment))
@@ -89,6 +89,11 @@
                    ;; :owner-enc-key the Worker stores the contact in plaintext
                    ;; AND the form stops claiming otherwise — the sentence and
                    ;; the ciphertext have one cause.
+                   ;; Carried through explicitly. A field present in the spec
+                   ;; and absent from this map is silently dropped — which is
+                   ;; how the first notify-webhook was configured, published,
+                   ;; and never fired.
+                   :yotei/notify-webhook notify-webhook
                    :yotei/owner-enc-key owner-enc-key
                    :yotei/owner-sig-key owner-sig-key
                    :yotei/name (or name "")
@@ -114,6 +119,8 @@
         (println "\n" (or (not-empty (str (:yotei/name cal)))
                           (:yotei/owner-label cal)) "—" segment)
         (println "  " (public-url segment))
+        (when (:yotei/notify-webhook cal)
+          (println "   通知先:" (:yotei/notify-webhook cal)))
         (println "  " (if (:yotei/owner-enc-key cal)
                         "連絡先は暗号化 / 確定は署名"
                         "⚠ 鍵なし — 連絡先は平文、確定できません（owner.cljs keygen）"))

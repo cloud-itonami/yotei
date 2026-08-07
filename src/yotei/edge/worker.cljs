@@ -31,6 +31,7 @@
             [yotei.time :as t]
             [yotei.view :as view]
             [yotei.edge.log-do]
+            [yotei.edge.notify :as notify]
             [yotei.envelope :as envelope]
             [yotei.store :as store])
   (:require-macros [yotei.edge.inline :refer [inline-resource]]))
@@ -189,7 +190,7 @@
   the version check narrows the window and KV has no atomic compare-and-set to
   close it. Now the read, the decision and the append all happen inside one
   object that handles one request at a time, so there is no window."
-  [env did cal params]
+  [env did cal params ctx]
   (let [now (now-epoch-min)
         start (t/parse-instant (get params "start"))
         minutes (js/parseInt (get params "minutes" "0") 10)
@@ -206,15 +207,19 @@
                        {:reason "\u304a\u540d\u524d\u3068\u9023\u7d61\u5148\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"})
                       {:status 400 :title "\u30a8\u30e9\u30fc \u2014 yotei"}))
       (let [yoyaku-id (str "y-" (js/crypto.randomUUID))
-            contact (get params "contact")
-            ;; Sealed to the calendar's key when it has one; the pre-envelope
-            ;; marker otherwise, and the form's wording is derived from the
-            ;; same field, so a calendar without a key does not claim
-            ;; encryption it is not getting.
+            ;; Name AND contact go inside one envelope. The name was very
+            ;; nearly stored in the clear so a webhook could say who booked —
+            ;; but a name is booking PII exactly as much as an address is, and
+            ;; G2 does not have a carve-out for the convenient half. What the
+            ;; notification loses, `owner.cljs list` recovers on the owner's
+            ;; own machine, where the key already is.
+            who (js/JSON.stringify
+                 (clj->js {:name (str/trim (get params "name"))
+                           :contact (str/trim (get params "contact"))}))
             contact-p (if-let [k (:yotei/owner-enc-key cal)]
-                        (envelope/seal k contact yoyaku-id)
+                        (envelope/seal k who yoyaku-id)
                         (js/Promise.resolve
-                         (str "unencrypted-pending-envelope:" contact)))]
+                         (str "unencrypted-pending-envelope:" who)))]
         (-> contact-p
          (.then
           (fn [contact-ref]
@@ -240,16 +245,21 @@
             (.then (fn [r]
                      (if (get r "refused")
                        (refuse (get r "reason") 409)
-                       (html-response
-                        (view/proposed-page {:owner-label label
+                       (do
+                         ;; waitUntil: the 予約 is already stored, so a slow or
+                         ;; broken webhook must not delay the response and must
+                         ;; not be able to turn a success into a refusal.
+                         (when ctx (.waitUntil ^js ctx (notify/notify! cal (get r "entry"))))
+                         (html-response
+                          (view/proposed-page {:owner-label label
                                              :calendar cal
                                              :start-epoch-min start
                                              :duration-min minutes})
-                        {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"})))))))))))))
+                          {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"}))))))))))))))
 
 (defn handle
   "Route one request. Returns a promise of a Response."
-  [request env]
+  [request env ctx]
   (let [url (js/URL. (.-url request))
         method (.-method request)
         segs (vec (remove str/blank? (str/split (.-pathname url) #"/")))
@@ -359,7 +369,7 @@
                          (.then (fn [params]
                                   (case (get params "step")
                                     "select" (handle-select env did cal params)
-                                    "propose" (handle-propose env did cal params)
+                                    "propose" (handle-propose env did cal params ctx)
                                     (js/Promise.resolve
                                      (json-response {:error "unknown step"} 400))))))
 
@@ -370,8 +380,8 @@
 
 (def app
   #js {:fetch
-       (fn [request env _ctx]
-         (-> (js/Promise.resolve (handle request env))
+       (fn [request env ctx]
+         (-> (js/Promise.resolve (handle request env ctx))
              (.then (fn [r] r))
              (.catch (fn [e]
                        ;; The detail is returned rather than swallowed: this

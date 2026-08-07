@@ -96,6 +96,18 @@
   (->> entries (reduce (fn [acc e] (assoc acc (get e "yoyakuId") e)) {}) vals
        (sort-by #(get % "startEpochMin"))))
 
+(defn- decode-who
+  "The envelope's plaintext as `{:name .. :contact ..}`.
+
+  Envelopes written before the name moved inside hold a bare contact string,
+  so a value that is not JSON is treated as the contact — old 予約 stay
+  readable instead of rendering as an error."
+  [plain]
+  (let [t (try (js->clj (js/JSON.parse plain)) (catch :default _ nil))]
+    (if (map? t)
+      {:name (get t "name") :contact (get t "contact")}
+      {:name nil :contact plain})))
+
 (defn- list! [seg]
   (p/let [cal (kv-get (str "calendar:" (did seg)))
           entries (or (kv-get (str "yoyaku-log:" (did seg))) [])
@@ -107,15 +119,20 @@
       (p/let [rows (p/all
                     (for [e current]
                       (let [ref- (get e "contactRef")]
-                        (p/let [contact (cond
-                                          (and (envelope/sealed? ref-) secret)
-                                          (-> (envelope/open (:private (:enc secret)) ref-
-                                                             (get e "yoyakuId"))
-                                              (.catch (fn [_] "（復号できません）")))
-                                          (envelope/sealed? ref-) "（封のまま — 鍵がありません）"
-                                          :else (str "（平文・封筒以前）"
-                                                     (str/replace ref- #"^unencrypted-pending-envelope:" "")))]
-                          (assoc e ::contact contact)))))]
+                        (p/let [plain (cond
+                                        (and (envelope/sealed? ref-) secret)
+                                        (-> (envelope/open (:private (:enc secret)) ref-
+                                                           (get e "yoyakuId"))
+                                            (.catch (fn [_] nil)))
+                                        (envelope/sealed? ref-) nil
+                                        :else (str/replace ref- #"^unencrypted-pending-envelope:" ""))]
+                          (assoc e ::who
+                                 (cond
+                                   (some? plain) (decode-who plain)
+                                   (envelope/sealed? ref-)
+                                   {:name nil :contact (if secret "（復号できません）"
+                                                           "（封のまま — 鍵がありません）")}
+                                   :else {:name nil :contact "（不明）"}))))))]
         (println (str seg " — " (count rows) " 件\n"))
         (doseq [e rows]
           (let [start (get e "startEpochMin")
@@ -124,7 +141,8 @@
                           "  " (subs local 0 10) " " (subs local 11 16)
                           "〜" (subs (t/format-instant (+ start offset (get e "durationMin"))) 11 16)
                           "  " (get e "yoyakuId")))
-            (println (str "      連絡先: " (::contact e)))))
+            (println (str "      " (or (:name (::who e)) "（名前なし）")
+                          "  /  " (:contact (::who e))))))
         (println "\n確定: nbb --classpath src scripts/owner.cljs confirm" seg "<yoyakuId>")))))
 
 ;; ── confirm ──────────────────────────────────────────────────────────────────
@@ -149,13 +167,61 @@
                          (or (get b "reason") (get b "error")))
                 (set! (.-exitCode js/process) 1))))))))
 
+(defn- notify-desktop! [title body]
+  ;; `display notification`, not `display dialog`: a banner does not take
+  ;; focus. This machine runs many concurrent sessions competing for it, and a
+  ;; modal would steal the keyboard from whichever one had it.
+  (run "osascript" ["-e" (str "display notification " (pr-str body)
+                              " with title " (pr-str title))] {}))
+
+(defn- watch!
+  "Poll a calendar and announce 予約 as they arrive.
+
+  The owner's side of the loop with no webhook and no endpoint to run. The
+  Worker's webhook is for sending somewhere else; this is for sitting on the
+  owner's machine, which is where the decryption key already is — so unlike a
+  webhook it can show who asked *and* their contact, without either leaving
+  the machine."
+  [seg]
+  (p/loop [seen #{} first-pass? true]
+    (p/let [entries (or (kv-get (str "yoyaku-log:" (did seg))) [])
+            secret (some-> (kagi-get (key-name seg)) edn/read-string)
+            cal (kv-get (str "calendar:" (did seg)))
+            offset (or (:yotei/tz-offset-min cal) 540)
+            current (fold-current entries)
+            fresh (remove #(contains? seen (str (get % "yoyakuId") "/" (get % "status")))
+                          current)]
+      (when (and (seq fresh) (not first-pass?))
+        (doseq [e fresh]
+          (p/let [ref- (get e "contactRef")
+                  plain (if (and (envelope/sealed? ref-) secret)
+                          (-> (envelope/open (:private (:enc secret)) ref- (get e "yoyakuId"))
+                              (.catch (fn [_] nil)))
+                          (when-not (envelope/sealed? ref-)
+                            (str/replace (str ref-) #"^unencrypted-pending-envelope:" "")))
+                  local (t/format-instant (+ (get e "startEpochMin") offset))
+                  ;; Decrypted here and nowhere else. The webhook deliberately
+                  ;; carries no identity; this runs where the key is.
+                  who (or (:name (decode-who (or plain ""))) "（名前なし）")
+                  when- (str (subs local 0 10) " " (subs local 11 16))]
+            (println (str "\n● " (get e "status") "  " when- "  " who
+                          "\n  " (get e "yoyakuId")))
+            (notify-desktop! (str "yotei — " (or (:yotei/name cal) seg))
+                             (str who " / " when-)))))
+      (when first-pass?
+        (println (str "watch " seg " — 既存 " (count current) " 件。新着を待ちます（Ctrl-C で終了）")))
+      (p/let [_ (p/delay 30000)]
+        (p/recur (into #{} (map #(str (get % "yoyakuId") "/" (get % "status")) current))
+                 false)))))
+
 (defn -main []
   (let [[cmd a b] args]
     (case cmd
       "keygen" (keygen! a)
       "list" (list! a)
       "confirm" (confirm! a b)
-      (println "usage: nbb --classpath src scripts/owner.cljs (keygen | list | confirm) <segment> [yoyakuId]"))))
+      "watch" (watch! a)
+      (println "usage: nbb --classpath src scripts/owner.cljs (keygen | list | confirm | watch) <segment> [yoyakuId]"))))
 
 (-> (p/resolved (-main))
     (p/catch (fn [e] (println "error:" (str e)) (set! (.-exitCode js/process) 1))))
