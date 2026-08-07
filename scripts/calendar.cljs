@@ -60,7 +60,8 @@
   Every window goes through `av/window`, which is the same constructor the
   tests use — this file holds no second opinion about what a window is."
   [{:keys [segment name owner-label owner-did purpose tz-offset-min slot-min
-           notice-min horizon-days windows closed-dates]
+           notice-min horizon-days windows closed-dates
+           owner-enc-key owner-sig-key]
     :or {tz-offset-min 540 slot-min 30 notice-min 60 horizon-days 60
          closed-dates #{}}}]
   (when-not (and segment (re-matches SEGMENT segment))
@@ -82,6 +83,14 @@
                                  :yotei/windows (mapv (fn [[day from to]]
                                                         (av/window day from to))
                                                       windows)})
+                   ;; Public keys only. The private halves live in kagi as
+                   ;; `yotei-owner-<segment>` and are used by
+                   ;; scripts/owner.cljs on the owner's machine. Without
+                   ;; :owner-enc-key the Worker stores the contact in plaintext
+                   ;; AND the form stops claiming otherwise — the sentence and
+                   ;; the ciphertext have one cause.
+                   :yotei/owner-enc-key owner-enc-key
+                   :yotei/owner-sig-key owner-sig-key
                    :yotei/name (or name "")
                    :yotei/owner-label owner-label
                    :yotei/owner-did (or owner-did (str "did:web:" host ":org:yotei"))
@@ -105,6 +114,9 @@
         (println "\n" (or (not-empty (str (:yotei/name cal)))
                           (:yotei/owner-label cal)) "—" segment)
         (println "  " (public-url segment))
+        (println "  " (if (:yotei/owner-enc-key cal)
+                        "連絡先は暗号化 / 確定は署名"
+                        "⚠ 鍵なし — 連絡先は平文、確定できません（owner.cljs keygen）"))
         (println "  " (str (:yotei/slot-min cal) "分枠 / UTC+"
                            (t/format-hhmm (:yotei/tz-offset-min cal))
                            " / 今後2週間で " (count preview) " 枠 " (count grouped) " 日"))

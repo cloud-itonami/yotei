@@ -31,6 +31,7 @@
             [yotei.time :as t]
             [yotei.view :as view]
             [yotei.edge.log-do]
+            [yotei.envelope :as envelope]
             [yotei.store :as store])
   (:require-macros [yotei.edge.inline :refer [inline-resource]]))
 
@@ -204,7 +205,20 @@
        (html-response (view/refused-page
                        {:reason "\u304a\u540d\u524d\u3068\u9023\u7d61\u5148\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"})
                       {:status 400 :title "\u30a8\u30e9\u30fc \u2014 yotei"}))
-      (let [req {"yoyakuId" (str "y-" (js/crypto.randomUUID))
+      (let [yoyaku-id (str "y-" (js/crypto.randomUUID))
+            contact (get params "contact")
+            ;; Sealed to the calendar's key when it has one; the pre-envelope
+            ;; marker otherwise, and the form's wording is derived from the
+            ;; same field, so a calendar without a key does not claim
+            ;; encryption it is not getting.
+            contact-p (if-let [k (:yotei/owner-enc-key cal)]
+                        (envelope/seal k contact yoyaku-id)
+                        (js/Promise.resolve
+                         (str "unencrypted-pending-envelope:" contact)))]
+        (-> contact-p
+         (.then
+          (fn [contact-ref]
+           (let [req {"yoyakuId" yoyaku-id
                  "calendarDid" did
                  "requesterDid" ""
                  "responderDid" (or (:yotei/owner-did cal) "")
@@ -218,8 +232,7 @@
                  ;; envelope service is wired, so it is stored under a marker
                  ;; that says so rather than a name implying encryption that
                  ;; did not happen — and the form says so too.
-                 "contactRef" (str "unencrypted-pending-envelope:"
-                                   (get params "contact"))}]
+                 "contactRef" contact-ref}]
         (-> (do-call env did "propose"
                      ;; The calendar travels as EDN: it is a Clojure value with
                      ;; namespaced keys and a set, none of which survives JSON.
@@ -232,7 +245,7 @@
                                              :calendar cal
                                              :start-epoch-min start
                                              :duration-min minutes})
-                        {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"})))))))))
+                        {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"})))))))))))))
 
 (defn handle
   "Route one request. Returns a promise of a Response."
@@ -244,6 +257,55 @@
     (cond
       (and (= method "GET") (= ["health"] segs))
       (js/Promise.resolve (json-response {:ok true :actor "yotei" :mount "/yotei"} 200))
+
+      ;; Confirming a 予約. The owner signs
+      ;; "yotei/confirm/v1\n<calendar did>\n<yoyaku id>" with their private
+      ;; key and posts the signature; the Worker verifies against the public
+      ;; key in the calendar. That is G5 exactly: yotei can check a
+      ;; confirmation and cannot manufacture one, because it holds no private
+      ;; key. Unauthenticated on purpose — the signature *is* the
+      ;; authentication, so there is no session to steal and no second
+      ;; admission rule to keep in step with this one.
+      (and (= method "POST") (= "confirm" (first segs)) (= 2 (count segs)))
+      (let [segment (second segs)]
+        (if-not (re-matches SEGMENT segment)
+          (js/Promise.resolve (json-response {:error "invalid calendar"} 400))
+          (let [store (kv/kv-store (.-YOYAKU ^js env))
+                did (calendar-did host segment)]
+            (-> (js/Promise.all #js [((:calendar store) did) (.json request)])
+                (.then
+                 (fn [[cal body]]
+                   (let [b (js->clj body)
+                         yoyaku-id (get b "yoyakuId")
+                         signature (get b "signature")
+                         pub (:yotei/owner-sig-key cal)]
+                     (cond
+                       (nil? cal) (json-response {:error "no such calendar"} 404)
+                       (nil? pub) (json-response
+                                   {:error "this calendar has no signing key — regenerate it with scripts/owner.cljs"}
+                                   409)
+                       (or (str/blank? (str yoyaku-id)) (str/blank? (str signature)))
+                       (json-response {:error "yoyakuId and signature are required"} 400)
+                       :else
+                       (-> (envelope/verify pub (envelope/confirm-message did yoyaku-id) signature)
+                           (.then (fn [ok?]
+                                    (if-not ok?
+                                      (json-response {:error "signature does not verify"} 401)
+                                      (-> (do-call env did "confirm"
+                                                   {:yoyakuId yoyaku-id
+                                                    ;; The DO records the
+                                                    ;; signature reference, and
+                                                    ;; `confirm-yoyaku` refuses
+                                                    ;; anything whose origin is
+                                                    ;; not a member.
+                                                    :signature {"origin" "member"
+                                                                "ref" signature}})
+                                          (.then (fn [r]
+                                                   (json-response
+                                                    (if (get r "refused")
+                                                      {:ok false :reason (get r "reason")}
+                                                      {:ok true :yoyaku (get r "entry")})
+                                                    (if (get r "refused") 409 200)))))))))))))))))
 
       ;; Operator-only, and deliberately not part of the 予約 surface: it
       ;; empties a calendar's log. Gated on a secret compared in constant time,

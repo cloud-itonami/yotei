@@ -43,9 +43,40 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `yotei.schedule` — 招待/RSVP の予定（cloud-itonami-app から統合） | ✅ |
 | `scripts/calendar.cljs` — カレンダー作成 CLI（検証してから公開） | ✅ |
 | `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
-| member 署名の確定 UI（所有者側）・封筒暗号化の実配線 | ❌ 未 |
+| `yotei.envelope` — ECDH P-256 + AES-GCM の封筒、ECDSA 署名 | ✅ |
+| `scripts/owner.cljs` — owner の keygen / list（復号）/ confirm（署名） | ✅ |
+| owner console（web） | ❌ 未（下記の理由で CLI が先） |
 
 `clojure -M:test` → 98 tests / 393 assertions。
+`nbb --classpath src scripts/envelope_test.cljs` → 封筒と署名の 16 検査（WebCrypto は
+JVM に無いので JVM suite の外）。
+
+## 連絡先の封筒と、確定の署名（2026-08-07）
+
+**カレンダーは公開鍵を 2 つ持ち、秘密鍵は kagi の `yotei-owner-<segment>` にある。**
+
+- **封筒**: ECDH P-256 →（HKDF-SHA-256）→ AES-256-GCM。ephemeral 鍵を毎回作るので
+  1 件の連絡先が漏れても次には効かない。**AAD に yoyakuId を縛る**ので、封筒を別の
+  予約 に貼り替えると GCM が拒否する。Worker は封をして平文を忘れる —— yotei は
+  秘密鍵を持たない（G5 が署名について言うのと同じ性質）ので、Worker 侵害・KV dump・
+  DO の押収、どれも ciphertext しか出さない
+- **確定**: owner が `yotei/confirm/v1\n<did>\n<yoyakuId>` に ECDSA 署名し、Worker が
+  カレンダーの公開鍵で検証する。**Worker は確認できるが作れない** = G5
+- **ページの文面は鍵の有無から導出する**。定数で書いていた時に「暗号化して預かる」と
+  嘘をついて公開されたので、文と ciphertext の原因を 1 つにした
+
+```bash
+nbb --classpath src scripts/owner.cljs keygen  <segment>            # 鍵生成（公開鍵を出力）
+nbb --classpath src scripts/owner.cljs list    <segment>            # 一覧 + 連絡先を復号
+nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId> # 署名して確定
+```
+
+**なぜ web console ではなく CLI か。** 確定には秘密鍵が要り（G5）、連絡先を読むには
+**復号鍵**が要る。**passkey は署名できても復号できない** —— cloud-itonami-app 自身の
+note が「Passkey は Data Integrity proof を作れない」と書いているのと同じ分岐。
+browser console にすると owner の生の秘密鍵をブラウザに置くことになり、この repo は
+まだその鍵管理の答えを持っていない。web console は作る価値があるが、**鍵の置き場所の
+答えが先**。
 
 ## 公開中のカレンダー
 
