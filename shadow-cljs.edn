@@ -5,5 +5,9 @@
  {:worker
   {:target :esm
    :output-dir "dist"
-   :modules {:worker {:exports {default yotei.edge.worker/app}}}
+   ;; Two exports: the Worker itself, and the Durable Object class Cloudflare
+   ;; instantiates by name. A DO class must be exported from the *same* script
+   ;; its binding is declared in.
+   :modules {:worker {:exports {default yotei.edge.worker/app
+                                YoyakuLog yotei.edge.log-do/YoyakuLog}}}
    :compiler-options {:output-feature-set :es2020 :infer-externs :auto}}}}

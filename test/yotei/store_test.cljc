@@ -1,7 +1,8 @@
 (ns yotei.store-test
   "The store's job is to make two people taking the same slot impossible, not
   unlikely. These tests drive the races directly rather than hoping."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [yotei.availability :as av]
             [yotei.store :as store]
             [yotei.time :as t]))
@@ -131,3 +132,42 @@
     (store/cancel! s DID "y1")
     (is (= 3 (count (store/history s DID))))
     (is (= "cancelled" (get (store/by-id s DID "y1") "status")))))
+
+;; ── what the Durable Object relies on ──
+;;
+;; The DO calls `decide-propose` / `decide-confirm` and appends whatever they
+;; return, inside a single-threaded object. These pin the contract it depends
+;; on: that a decision is a value, and that producing it reads nothing and
+;; writes nothing.
+
+(deftest decide-propose-is-a-pure-function-of-the-log
+  (let [entries []
+        req (req "y1" slot)
+        a (store/decide-propose cal DID entries req now)
+        b (store/decide-propose cal DID entries req now)]
+    (is (= :append (:action a)))
+    (testing "called twice on the same inputs it decides the same thing"
+      (is (= (dissoc (:entry a) "consentRef") (dissoc (:entry b) "consentRef"))))))
+
+(deftest decide-propose-refuses-against-a-log-it-was-handed
+  ;; The DO passes the log it just read from its own storage. Nothing here
+  ;; reaches for a store, which is what lets the same function serve the JVM
+  ;; atom and a Durable Object.
+  (let [confirmed [{"status" "confirmed" "calendarDid" DID
+                    "startEpochMin" slot "durationMin" 30}]
+        d (store/decide-propose cal DID confirmed (req "y2" slot) now)]
+    (is (= :refuse (:action d)))))
+
+(deftest decide-confirm-rejects-a-server-signature
+  (let [{:keys [entry]} (store/decide-propose cal DID [] (req "y1" slot) now)
+        d (store/decide-confirm [entry] "y1" {"origin" "server" "ref" "x"})]
+    (is (= :refuse (:action d)))
+    (is (str/includes? (get (:result d) "reason") "G5"))))
+
+(deftest decide-confirm-appends-rather-than-replaces
+  (let [{:keys [entry]} (store/decide-propose cal DID [] (req "y1" slot) now)
+        d (store/decide-confirm [entry] "y1" (member "s1"))]
+    (is (= :append (:action d)))
+    (is (= "confirmed" (get (:entry d) "status")))
+    (testing "the proposal it was derived from is untouched"
+      (is (= "proposed" (get entry "status"))))))

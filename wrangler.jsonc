@@ -14,8 +14,22 @@
   // The script name must stay `yotei`, because the router dispatches on the
   // repository name and manifest.edn's :app/mount says "/yotei". Those three
   // agree by being the same string, not by a mapping table.
+  // KV holds two different things now, and only one of them is authoritative.
+  //   calendar:<did>    the calendar definition — written by scripts/calendar.cljs
+  //   yoyaku-log:<did>  a MIRROR of the log; the Durable Object owns the original
+  // Deleting a mirror loses nothing: the object rebuilds it on the next write.
   "kv_namespaces": [
     { "binding": "YOYAKU", "id": "f1c62eb9ebb3436ea1ab8aaf92e7fee7" }
+  ],
+
+  // One object per calendar, addressed by idFromName(<calendar did>). Globally
+  // unique and single-threaded, which is what makes "exactly one writer" a
+  // property of where the code runs rather than something to implement.
+  "durable_objects": {
+    "bindings": [{ "name": "YOYAKU_LOG", "class_name": "YoyakuLog" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["YoyakuLog"] }
   ],
   "vars": { "YOTEI_HOST": "app.itonami.cloud" }
 }
