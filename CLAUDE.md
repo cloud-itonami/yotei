@@ -69,7 +69,33 @@ JVM に無いので JVM suite の外）。
 nbb --classpath src scripts/owner.cljs keygen  <segment>            # 鍵生成（公開鍵を出力）
 nbb --classpath src scripts/owner.cljs list    <segment>            # 一覧 + 連絡先を復号
 nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId> # 署名して確定
+nbb --classpath src scripts/owner.cljs watch   <segment>            # 新着を待つ（macOS 通知）
 ```
+
+## 通知（2026-08-07）
+
+**予約 が入っても owner が気づかない**という穴を塞いだ。2 経路あり、どちらも
+**個人情報を運ばない**:
+
+- **webhook**（任意）: カレンダーの `:notify-webhook` に metadata を POST。
+  `waitUntil` なので遅い/壊れた webhook が 予約 を失敗させない
+- **`owner.cljs watch`**: owner の端末で polling し、macOS 通知を出す。**鍵が
+  あるのはここだけ**なので、名前と連絡先を復号して表示できる
+
+**名前も連絡先も封筒の中。** 最初は「名前が無いと通知が使えない」と考えて名前を
+平文で載せたが、**名前も予約 PII であり G2 に都合のいい半分だけの例外は無い**。
+webhook に載せれば、その URL の持ち主（Slack 等）に平文で渡ることになり、2 つ隣の
+namespace でやっている暗号化が無意味になる。通知は**いつ**と id だけを運び、
+**誰か**は owner の端末で開く。
+
+実測: 通知本文に `山田太郎` も `yamada-secret@example.com` も 0 件、KV にも 0 件、
+`owner.cljs list` では両方見える。
+
+⚠ **email 通知は未配線。** secrets-location-map が指す
+`op://gftdcojp/gftd.resend/credential` は**その vault に存在しない**（2026-08-07、
+1Password は応答したので不在であってタイムアウトではない）。kagi にも Keychain にも
+記載名では無い。**map 自身が繰り返し記録している drift の再発**。鍵が出てきたら
+`yotei.edge.notify` に分岐を足して `:notify-email` を足すだけ。
 
 **なぜ web console ではなく CLI か。** 確定には秘密鍵が要り（G5）、連絡先を読むには
 **復号鍵**が要る。**passkey は署名できても復号できない** —— cloud-itonami-app 自身の
