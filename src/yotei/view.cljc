@@ -207,8 +207,18 @@
                        :for "yoyaku-contact"
                        :requirement "必須" :required? true
                        :support-id "yoyaku-contact-support"
-                       :support (str "この予定の連絡にだけ使います。" owner-label
-                                     "が受け取ります。他の用途には使いません。")}
+                       ;; The claim is DERIVED from whether the calendar
+                       ;; actually has a key, never written as a constant. The
+                       ;; last time this line was a constant it said the handle
+                       ;; was encrypted while the Worker stored it in plaintext,
+                       ;; and it shipped. Now the sentence and the ciphertext
+                       ;; have the same cause.
+                       :support (if (seq (str (:yotei/owner-enc-key cal)))
+                                  (str "この予定の連絡にだけ使います。" owner-label
+                                       "の鍵で暗号化して預かるので、" owner-label
+                                       "以外は読めません。")
+                                  (str "この予定の連絡にだけ使います。" owner-label
+                                       "が受け取ります。他の用途には使いません。"))}
                       (dds/input-text {:id "yoyaku-contact" :name "contact"
                                        :required true
                                        :aria-describedby "yoyaku-contact-support"}))

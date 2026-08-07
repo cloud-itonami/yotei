@@ -17,6 +17,10 @@
 
 [{:segment "jun"
   :name "30分の打ち合わせ"
+  ;; 公開鍵のみ。秘密鍵は kagi personal/yotei-owner-jun。
+  ;; `nbb --classpath src scripts/owner.cljs keygen jun` が出力する。
+  :owner-enc-key {"key_ops" [], "ext" true, "kty" "EC", "x" "4fTSKgxtRih1EdkmE7AdTXjXHFjn9qlpzWVR_hFtsKE", "y" "1E_Z-24GBPedp1JyClvRNHrp3rzubUIlJgIwMoHu17Y", "crv" "P-256"}
+  :owner-sig-key {"key_ops" ["verify"], "ext" true, "kty" "EC", "x" "Uy7jhTNzhn8o8-aXapYmbcFYkg-axxaqqsrY5ic55fE", "y" "_CluAW9sBV6lj7buZijfnEskhpzwX-TOcyQKs8V841s", "crv" "P-256"}
   :owner-label "川崎"
   :purpose "30分の打ち合わせです。空いている時間を選んでください。"
   :tz-offset-min 540
@@ -30,6 +34,9 @@
             [:friday    "10:00" "12:00"]]}
 
  {:segment "jun-15min"
+  ;; 公開鍵のみ。秘密鍵は kagi personal/yotei-owner-jun-15min。
+  :owner-enc-key {"key_ops" [], "ext" true, "kty" "EC", "x" "U10QjCltumEMBhc83sUeC4y1XXtPvna2XS5GJC0Ijow", "y" "VxmDsrHQJZAtYvL-8Vnu5pWIAei1_g9PIhUx63H99GY", "crv" "P-256"}
+  :owner-sig-key {"key_ops" ["verify"], "ext" true, "kty" "EC", "x" "iL5u_GsD939I5e2SlAdgRVtDmTuCywWOrmekKThmzzE", "y" "Qa-d8T4-RlAsKPLezzJ-1Z_1j24Sjqb9blHqM08S2F0", "crv" "P-256"}
   :name "15分の相談"
   :owner-label "川崎"
   :purpose "15分の短い相談です。用件がはっきりしているときはこちらへ。"
@@ -46,6 +53,9 @@
             [:friday    "09:00" "10:00"]]}
 
  {:segment "jun-review"
+  ;; 公開鍵のみ。秘密鍵は kagi personal/yotei-owner-jun-review。
+  :owner-enc-key {"key_ops" [], "ext" true, "kty" "EC", "x" "fVcAWt_4Bsmn1QrVbHCHvcU6jIHUTS8ki6NeU2Ck8gY", "y" "7ssTDNqUA7cVCREIods4Umg4k2XW_L2BRhQXgGJzRqc", "crv" "P-256"}
+  :owner-sig-key {"key_ops" ["verify"], "ext" true, "kty" "EC", "x" "_hciv4UFz4mtznUVWyA6RaeRsbmZ-RVRxs7V8CcjAr8", "y" "dMo5qGDLa0FGJmuNtfa2KN8x9yzgtosa3AqGW3GaYIA", "crv" "P-256"}
   :name "60分の設計レビュー"
   :owner-label "川崎"
   :purpose "60分の設計レビューです。事前に読むものがあれば用件に書いてください。"
