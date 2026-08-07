@@ -40,7 +40,8 @@
   appears here, it has escaped the layer that is tested."
   (:require [clojure.edn :as edn]
             [shadow.cljs.modern :refer [defclass]]
-            [yotei.store :as store]))
+            [yotei.store :as store]
+            [yotei.yoyaku :as yoyaku]))
 
 (def ^:private LOG-KEY "log")
 
@@ -125,6 +126,26 @@
                                             (.then (fn [_]
                                                      (json {:refused false
                                                             :entry (:entry d)} 200)))))))))))))
+
+        "cancel"
+        (-> (.json request)
+            (.then (fn [body]
+                     (let [yid (get (js->clj body) "yoyakuId")]
+                       (-> (.readLog this)
+                           (.then (fn [entries]
+                                    (let [target (->> entries
+                                                      (reduce (fn [acc e]
+                                                                (assoc acc (get e "yoyakuId") e)) {})
+                                                      (#(get % yid)))]
+                                      (if (nil? target)
+                                        (json {:refused true :reason "no such 予約"} 200)
+                                        ;; Appended, not mutated: the log keeps
+                                        ;; that it was proposed before it was
+                                        ;; cancelled (G3).
+                                        (-> (.writeLog this did
+                                                       (conj entries
+                                                             (yoyaku/cancel-yoyaku target)))
+                                            (.then (fn [_] (json {:refused false} 200)))))))))))))
 
         "clear"
         (-> (.delete (.-storage ctx) LOG-KEY)

@@ -13,6 +13,13 @@
         io.github.kotoba-lang/calendar
         {:git/url "https://github.com/kotoba-lang/calendar.git"
          :git/sha "01163ded2616a604c24807f2c1e867b0db53510c"}
+        ;; org-ietf-ical — RFC 5545. The .ics a visitor adds to their own
+        ;; calendar. Pinned past the fix that keeps the UTC "Z" through parse
+        ;; and emit: without it a 予約 would land at the attendee's local clock
+        ;; face rather than the agreed instant.
+        io.github.kotoba-lang/org-ietf-ical
+        {:git/url "https://github.com/kotoba-lang/org-ietf-ical.git"
+         :git/sha "c2c965ec86ca9a02491363c53760368b2762106c"}
         io.github.kotoba-lang/jp-go-digital-design-system
         {:git/url "https://github.com/kotoba-lang/jp-go-digital-design-system.git"
          :git/sha "cc8f4849af5def7ea535fd6c0b8a623ccca645e9"}}

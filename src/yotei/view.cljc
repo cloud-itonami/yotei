@@ -236,7 +236,7 @@
   Not 'Confirmed'. The slot is not held yet (`is-free?` counts only confirmed
   予約), and telling somebody their meeting is booked when it is not is the
   one failure a 予約 page cannot recover from."
-  [{:keys [owner-label calendar start-epoch-min duration-min]}]
+  [{:keys [owner-label calendar start-epoch-min duration-min] :as ctx-url}]
   (let [cal (merge av/defaults calendar)
         offset (:yotei/tz-offset-min cal)
         date (subs (t/format-instant (+ start-epoch-min offset)) 0 10)]
@@ -250,8 +250,74 @@
        (date-label date) " " (local-hhmm offset start-epoch-min)
        "〜" (local-hhmm offset (+ start-epoch-min duration-min))]
       (str " （UTC" (offset-label offset) "）")]
+     (when-let [u (:status-url ctx-url)]
+       [:p [:a {:class "dads-button" :data-type "outline" :data-size "md" :href u}
+            "この予約の状態を見る"]])
      [:p {:class "yoyaku__note"}
-      "この画面は閉じてかまいません。"]]))
+      "この URL を控えておくと、確定したかどうかをいつでも確認できます。"]]))
+
+(defn status-page
+  "What the visitor sees when they come back to their own 予約 link.
+
+  The link is the only thing that closes the loop from their side. yotei
+  cannot write to them — their contact is sealed to the owner's key — so a
+  page they can return to is the whole of what it can offer, and it has to
+  answer the one question they have: has it been confirmed yet.
+
+  The URL carries an unguessable id, which is what authorises it. That is the
+  same shape as every other 予約 confirmation link, and it means anyone holding
+  the link sees the time and status. It shows no name and no contact, so a
+  forwarded link discloses an appointment and not a person."
+  [{:keys [owner-label calendar entry]}]
+  (let [cal (merge av/defaults calendar)
+        offset (:yotei/tz-offset-min cal)
+        start (get entry "startEpochMin")
+        dur (get entry "durationMin")
+        status (get entry "status")
+        date (subs (t/format-instant (+ start offset)) 0 10)
+        when- [:p {:class "yoyaku__lede"}
+               [:span {:class "yoyaku__slot"}
+                (date-label date) " " (local-hhmm offset start)
+                "〜" (local-hhmm offset (+ start dur))]
+               (str " （UTC" (offset-label offset) "）")]]
+    [:main {:class "yoyaku"}
+     (case status
+       "confirmed"
+       (list (dds/heading 1 "確定しています" {:size "32"})
+             (dds/notification-banner
+              {:type :success :heading (str owner-label "が承認しました")}
+              [:p "この時間で確定しています。"])
+             when-
+             [:p [:a {:class "dads-button" :data-type "solid-fill" :data-size "md"
+                      :href "ics" :download "yotei.ics"}
+                  "カレンダーに追加（.ics）"]])
+
+       "cancelled"
+       (list (dds/heading 1 "取り消されています" {:size "32"})
+             (dds/notification-banner
+              {:type :warning :heading "この予約は取り消されました"}
+              [:p "同じ時間をもう一度取ることはできます。"])
+             when-
+             [:p [:a {:href "../.."} "空いている時間の一覧に戻る"]])
+
+       ;; proposed, or anything else the log might grow later
+       (list (dds/heading 1 "承認待ちです" {:size "32"})
+             (dds/notification-banner
+              {:type :info-1 :heading "まだ確定していません"}
+              [:p (str owner-label "が承認すると確定します。このページで確認できます。")])
+             when-
+             [:form {:method "post" :style "margin-top:var(--hig-spacing-5)"}
+              [:input {:type "hidden" :name "step" :value "cancel"}]
+              (dds/button "取り消す" {:type :outline :submit? true})]))
+     [:p {:class "yoyaku__note"}
+      "このページの URL は、この予約にだけ結びついています。"]]))
+
+(defn cancelled-page [{:keys [owner-label]}]
+  [:main {:class "yoyaku"}
+   (dds/heading 1 "取り消しました" {:size "32"})
+   [:p {:class "yoyaku__lede"}
+    (str owner-label "には通知されます。この時間は他の人が取れるようになりました。")]
+   [:p {:class "yoyaku__note"} [:a {:href "../.."} "空いている時間の一覧に戻る"]]])
 
 (defn refused-page
   "A refusal that says which rule refused, so the visitor knows whether to
