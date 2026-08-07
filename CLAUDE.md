@@ -37,14 +37,15 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `yotei.availability` — 週次 window → 空き instant（tz/notice/horizon/closed） | ✅ |
 | `yotei.store` — append-only ログ + CAS。`decide-propose`/`decide-confirm` は純関数 | ✅ |
 | `yotei.view` / `yotei.render` — 公開 予約 ページ（jp-go-dds、SSR、JS 不要） | ✅ design-quality 100.00 |
-| `yotei.edge.*` — Cloudflare Worker、KV 永続化 | ✅ **本番稼働中** |
+| `yotei.edge.*` — Cloudflare Worker | ✅ **本番稼働中** |
+| `yotei.edge.log-do` — Durable Object（正本）+ KV mirror | ✅ lost-update 解消 |
 | **`https://app.itonami.cloud/yotei/c/<calendar>`** | ✅ **live** |
 | `yotei.schedule` — 招待/RSVP の予定（cloud-itonami-app から統合） | ✅ |
 | `scripts/calendar.cljs` — カレンダー作成 CLI（検証してから公開） | ✅ |
 | `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
 | member 署名の確定 UI（所有者側）・封筒暗号化の実配線 | ❌ 未 |
 
-`clojure -M:test` → 94 tests / 385 assertions。
+`clojure -M:test` → 98 tests / 393 assertions。
 
 ## 公開中のカレンダー
 
@@ -82,17 +83,52 @@ script 名・repo 名・`:app/mount` の 3 つは同じ文字列であること�
 
 カレンダーは KV の `calendar:<did>` に EDN で置く。
 
-## KV の lost-update は実測済みの制約（未解決）
+## 永続化: Durable Object が正本、KV は projection（2026-08-07 解決）
 
-**KV に atomic CAS は無い。** version 検査は窓を狭めるだけで閉じない。
-2026-08-06 の初回 live テストで**実際に起きた**: 直接書いた confirmed な 予約 を、
-数秒後に届いた propose が古い replica を読んで append し上書きした。予約 は消え、
-その枠が再び提示された。**読みが古いまま 5 分以上続いた**ので「1〜2 秒」という
-理解は誤り。エラーは出ない —— 予約 が黙って消えるだけ。
+**KV の lost-update は実測で確認され、Durable Object で塞いだ。**
 
-恒久対応はカレンダーごとの Durable Object（CLAUDE.md が「DO は直列化器として使い、
-ストレージは共有バックエンドへ」と定める形）。`YoteiStore` protocol がその差し替えを
-書き直しでなく backend 追加にするための継ぎ目。
+計測（`scripts/concurrency_probe.cljs`）: 1 カレンダーに 8 件の 予約 を同時投入
+（全部別の枠なので全部通るのが正しい）。
+
+| | 受理 | 保存 | 失われた |
+|---|---|---|---|
+| KV（read-modify-write + version 検査） | 8 | 2 | **6（75%）** |
+| Durable Object | 10 | 10 | 0 |
+| Durable Object（16 同時） | 16 | 16 | 0 |
+
+6 人が「申し込みを受け付けました」と言われて、他人の書き込みに黙って消された。
+version 検査は窓を狭めるだけで、KV に atomic CAS が無い以上閉じない。
+
+**DO は カレンダー DID ごとに `idFromName`。**グローバルに一意で単一スレッドなので、
+「書き手はちょうど1人」が*実装するもの*ではなく*コードが動く場所の性質*になる
+（lease も fencing epoch も retry ループも要らない）。
+
+- **正本は `ctx.storage`**（強整合・トランザクショナル）
+- **KV は mirror**。`yoyaku-log:<did>` を消しても何も失われない — 次の書き込みで
+  DO が再構築する（**実測で確認: 16 件のログを消して、1 件 propose したら 17 件で
+  復活**）。CLAUDE.md の「消して再構築できるなら cache」テストに合格する
+- mirror を await しない。append は既に durable で、遅い KV 書き込みが応答を
+  遅らせる理由が無い
+- **DO は規則を持たない。**判断は `yotei.store/decide-propose` /
+  `decide-confirm`（JVM store と同じ純関数）。DO が足すのは直列化だけ
+
+## 運用 — テストデータの消去
+
+`POST /yotei/admin/clear/<segment>` + `x-yotei-admin: <token>`。**owner console では
+ない** — 確定/取消は member 署名（G5）の後ろで owner view に置く。これは deploy
+資格情報を持つ人の運用ツールで、このセッションが公開ページ経由で作った ~35 件の
+テスト 予約 を消すために作った（DO は正しく、ただ頼んだだけの相手には返さない）。
+
+token は **kagi `personal/yotei-admin-token`**。namespaced worker には
+`wrangler secret put` が届かない（`--dispatch-namespace` フラグが無い）。
+**`wrangler@4.119` 以降の `deploy --secrets-file` が通る経路**で、同梱の 4.69 には
+このフラグが無い:
+
+```bash
+printf '{"YOTEI_ADMIN_TOKEN":"%s"}' "$(kagi get yotei-admin-token)" > /tmp/s.json
+npx wrangler@4.119.0 deploy --dispatch-namespace ai-gftd-repository-dispatch --secrets-file /tmp/s.json
+rm /tmp/s.json
+```
 
 **performerType**: `service`
 

@@ -30,6 +30,7 @@
             [yotei.edge.kv :as kv]
             [yotei.time :as t]
             [yotei.view :as view]
+            [yotei.edge.log-do]
             [yotei.store :as store])
   (:require-macros [yotei.edge.inline :refer [inline-resource]]))
 
@@ -84,9 +85,50 @@
 
 (def ^:private SEGMENT #"^[a-z0-9][a-z0-9-]{0,62}$")
 
-(defn- openings-page [store did cal]
+(defn- constant-time=
+  "String equality that does not leak how much of a secret matched.
+
+  `=` returns as soon as two characters differ, so the time it takes says how
+  long the shared prefix was. That is enough to guess a token one character at
+  a time given enough attempts."
+  [a b]
+  (let [a (str a) b (str b)]
+    (and (= (count a) (count b))
+         (zero? (reduce (fn [acc i]
+                          (bit-or acc (bit-xor (.charCodeAt a i) (.charCodeAt b i))))
+                        0
+                        (range (count a)))))))
+
+(defn- log-stub
+  "The Durable Object that owns `did`'s 予約 log.
+
+  `idFromName` on the calendar DID, so the object *is* the calendar: one
+  serialization domain per calendar, which is the granularity the invariant
+  needs (no-double-book is per-calendar) and no coarser."
+  [env did]
+  (let [ns- (.-YOYAKU_LOG ^js env)]
+    (.get ns- (.idFromName ns- did))))
+
+(defn- do-call
+  "Ask the calendar's object to do something. Returns a promise of its JSON."
+  [env did op body]
+  (let [url (str "https://yoyaku-log/?op=" op "&did=" (js/encodeURIComponent did))]
+    (-> (.fetch (log-stub env did) url
+                (clj->js (cond-> {:method (if body "POST" "GET")}
+                           body (assoc :body (js/JSON.stringify (clj->js body))
+                                       :headers {"content-type" "application/json"}))))
+        (.then (fn [r] (.json r)))
+        (.then (fn [j] (js->clj j))))))
+
+(defn- confirmed-via-do
+  "The confirmed 予約, read through the object rather than off a KV replica."
+  [env did]
+  (-> (do-call env did "read" nil)
+      (.then (fn [j] (store/current-confirmed (get j "entries"))))))
+
+(defn- openings-page [env did cal]
   (let [now (now-epoch-min)]
-    (-> (kv/confirmed store did)
+    (-> (confirmed-via-do env did)
         (.then (fn [confirmed]
                  (let [os (av/openings cal now (+ now (* 14 1440)) confirmed now)
                        label (or (:yotei/owner-label cal) "この人")]
@@ -117,7 +159,7 @@
   Re-validated rather than trusted: the visitor may have had the page open for
   an hour, and offering a form for a slot that has since gone would collect
   their details and then refuse them."
-  [store did cal params]
+  [env did cal params]
   (let [now (now-epoch-min)
         start (t/parse-instant (get params "start"))
         minutes (js/parseInt (get params "minutes" "0") 10)]
@@ -125,7 +167,7 @@
       (js/Promise.resolve
        (html-response (view/refused-page {:reason "時間の指定が読み取れませんでした。"})
                       {:status 400 :title "エラー — yotei"}))
-      (-> (kv/confirmed store did)
+      (-> (confirmed-via-do env did)
           (.then (fn [confirmed]
                    (if-not (av/open? cal start minutes confirmed now)
                      (html-response
@@ -139,12 +181,14 @@
                       {:title "この時間で申し込む — yotei"}))))))))
 
 (defn- handle-propose
-  "Write the proposal.
+  "Write the proposal — by asking the calendar's Durable Object to.
 
-  The rules are `yotei.store/decide-propose`'s — the same pure function the
-  JVM store calls. This reads the log, turns the decision into a page, and
-  appends at the version it read at. It decides nothing itself."
-  [store did cal params]
+  This used to read the log, decide, and append at the version it read at.
+  That is the read-modify-write that lost six of eight 予約 in a live probe:
+  the version check narrows the window and KV has no atomic compare-and-set to
+  close it. Now the read, the decision and the append all happen inside one
+  object that handles one request at a time, so there is no window."
+  [env did cal params]
   (let [now (now-epoch-min)
         start (t/parse-instant (get params "start"))
         minutes (js/parseInt (get params "minutes" "0") 10)
@@ -160,40 +204,35 @@
        (html-response (view/refused-page
                        {:reason "\u304a\u540d\u524d\u3068\u9023\u7d61\u5148\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"})
                       {:status 400 :title "\u30a8\u30e9\u30fc \u2014 yotei"}))
-      (-> ((:log store) did)
-          (.then
-           (fn [pair]
-             (let [entries (first pair)
-                   version (second pair)
-                   req {"yoyakuId" (str "y-" (js/crypto.randomUUID))
-                        "calendarDid" did
-                        "requesterDid" ""
-                        "responderDid" (or (:yotei/owner-did cal) "")
-                        "startEpochMin" start
-                        "durationMin" minutes
-                        ;; The visitor's own submission is the consent, and it
-                        ;; is recorded as a reference rather than as the text
-                        ;; they typed (G8/G2).
-                        "consentRef" (str "self:" (.toISOString (js/Date.)))
-                        ;; G2: contact is an envelope reference. This build has
-                        ;; no envelope service wired, so it is stored under a
-                        ;; marker that says so rather than under a name that
-                        ;; implies encryption that did not happen.
-                        "contactRef" (str "unencrypted-pending-envelope:"
-                                          (get params "contact"))}
-                   decision (store/decide-propose cal did entries req now)]
-               (if (= :refuse (:action decision))
-                 (js/Promise.resolve (refuse (get (:result decision) "reason") 409))
-                 (-> ((:append! store) did (:entry decision) version)
-                     (.then (fn [v]
-                              (if v
-                                (html-response
-                                 (view/proposed-page {:owner-label label
-                                                      :calendar cal
-                                                      :start-epoch-min start
-                                                      :duration-min minutes})
-                                 {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"})
-                                (refuse "\u540c\u6642\u306b\u5225\u306e\u7533\u3057\u8fbc\u307f\u304c\u3042\u308a\u307e\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002" 409)))))))))))))
+      (let [req {"yoyakuId" (str "y-" (js/crypto.randomUUID))
+                 "calendarDid" did
+                 "requesterDid" ""
+                 "responderDid" (or (:yotei/owner-did cal) "")
+                 "startEpochMin" start
+                 "durationMin" minutes
+                 ;; The visitor's own submission is the consent, and it is
+                 ;; recorded as a reference rather than as the text they
+                 ;; typed (G8/G2).
+                 "consentRef" (str "self:" (.toISOString (js/Date.)))
+                 ;; G2: contact is meant to be an envelope reference. No
+                 ;; envelope service is wired, so it is stored under a marker
+                 ;; that says so rather than a name implying encryption that
+                 ;; did not happen — and the form says so too.
+                 "contactRef" (str "unencrypted-pending-envelope:"
+                                   (get params "contact"))}]
+        (-> (do-call env did "propose"
+                     ;; The calendar travels as EDN: it is a Clojure value with
+                     ;; namespaced keys and a set, none of which survives JSON.
+                     {:cal (pr-str cal) :req req :now now})
+            (.then (fn [r]
+                     (if (get r "refused")
+                       (refuse (get r "reason") 409)
+                       (html-response
+                        (view/proposed-page {:owner-label label
+                                             :calendar cal
+                                             :start-epoch-min start
+                                             :duration-min minutes})
+                        {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"})))))))))
 
 (defn handle
   "Route one request. Returns a promise of a Response."
@@ -206,12 +245,36 @@
       (and (= method "GET") (= ["health"] segs))
       (js/Promise.resolve (json-response {:ok true :actor "yotei" :mount "/yotei"} 200))
 
+      ;; Operator-only, and deliberately not part of the 予約 surface: it
+      ;; empties a calendar's log. Gated on a secret compared in constant time,
+      ;; and it exists because this session created ~35 test 予約 through the
+      ;; public page and the Durable Object — correctly — will not give them
+      ;; back to anyone who merely asks.
+      ;;
+      ;; It is not an owner console. When the owner view lands, confirming and
+      ;; cancelling belong there behind a member signature (G5); this stays an
+      ;; operations tool for the person holding the deploy credentials.
+      (and (= method "POST") (= ["admin" "clear"] (take 2 segs)) (= 3 (count segs)))
+      (let [secret (some-> ^js env .-YOTEI_ADMIN_TOKEN)
+            given (.get (.-headers request) "x-yotei-admin")]
+        (if (or (nil? secret) (not (constant-time= secret given)))
+          (js/Promise.resolve (json-response {:error "unauthorized"} 401))
+          (let [segment (nth segs 2)]
+            (if-not (re-matches SEGMENT segment)
+              (js/Promise.resolve (json-response {:error "invalid calendar"} 400))
+              (-> (do-call env (calendar-did host segment) "clear" {})
+                  (.then (fn [r] (json-response {:cleared true :calendar segment
+                                                 :result r} 200))))))))
+
       (and (= "c" (first segs)) (>= (count segs) 2))
       (let [segment (second segs)]
         (if-not (re-matches SEGMENT segment)
           (js/Promise.resolve (json-response {:error "invalid calendar"} 400))
           (let [store (kv/kv-store (.-YOYAKU ^js env))
                 did (calendar-did host segment)]
+            ;; The calendar *definition* still comes from KV: it is
+            ;; configuration, written by the CLI, and read-only here. Only the
+            ;; 予約 log needs serializing.
             (-> ((:calendar store) did)
                 (.then
                  (fn [cal]
@@ -223,7 +286,7 @@
                      (json-response {:error "no such calendar" :calendar segment} 404)
 
                      (and (= method "GET") (= 2 (count segs)))
-                     (openings-page store did cal)
+                     (openings-page env did cal)
 
                      ;; Both stages POST to this same URL and say which they
                      ;; are with `step`, so the view never has to know where it
@@ -233,8 +296,8 @@
                      (-> (form-params request)
                          (.then (fn [params]
                                   (case (get params "step")
-                                    "select" (handle-select store did cal params)
-                                    "propose" (handle-propose store did cal params)
+                                    "select" (handle-select env did cal params)
+                                    "propose" (handle-propose env did cal params)
                                     (js/Promise.resolve
                                      (json-response {:error "unknown step"} 400))))))
 
