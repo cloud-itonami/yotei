@@ -1,0 +1,29 @@
+;; yotei — fleet catalog descriptor.
+;;
+;; This file is why yotei appears in cloud-itonami-app's Fleet view at all.
+;; The catalog (`resources/itonami-fleet-catalog.edn`, 1,215 entries) is
+;; generated from `cloud-itonami/*/blueprint.edn`, and for a while yotei was
+;; the one deployed, publicly-reachable app in the org that had no blueprint
+;; and therefore did not exist to the app that lists them.
+;;
+;; :endpoint is the field that matters. The generator treats an entry with one
+;; as **callable** and an entry without one as a directory record — 77 of 1,215
+;; are callable today, and this is one of them.
+;;
+;; The `:app/*` keys in manifest.edn (mount, org, surface) are the app-side
+;; view of the same facts and are deliberately NOT duplicated here: the
+;; catalog answers "what exists and can it be called", the manifest answers
+;; "where does it mount and who owns it". They are joined by :id == repo name
+;; == script name == :app/mount segment, which are one string by construction.
+
+{:itonami.blueprint/id "yotei"
+ :itonami.blueprint/name "yotei — 予約 / scheduling commons"
+ :itonami.blueprint/domain :household/scheduling
+ :itonami.blueprint/governor :yoyaku-governor
+ :itonami.blueprint/status :public-oss
+ :itonami.blueprint/license "AGPL-3.0-or-later"
+ :itonami.blueprint/endpoint "https://app.itonami.cloud/yotei"
+ :itonami.blueprint/social-impact [:coordination-cost-reduction :no-booker-harvesting]
+ :itonami.blueprint/required-technologies [:audit-ledger :durable-object :public-key-envelope]
+ :itonami.blueprint/robotics false
+ :itonami.blueprint/adr "2606072200"}
