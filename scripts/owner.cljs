@@ -20,7 +20,9 @@
   Usage:
     nbb --classpath src scripts/owner.cljs keygen <segment>
     nbb --classpath src scripts/owner.cljs list <segment>
-    nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId>"
+    nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId>
+    nbb --classpath src scripts/owner.cljs decline <segment> <yoyakuId>
+    nbb --classpath src scripts/owner.cljs watch   <segment> [--approve]"
   (:require ["child_process" :as cp]
             [clojure.edn :as edn]
             [clojure.string :as str]
@@ -167,6 +169,58 @@
                          (or (get b "reason") (get b "error")))
                 (set! (.-exitCode js/process) 1))))))))
 
+(defn- cancel!
+  "Decline a proposal.
+
+  Uses the same route a visitor's own link uses. That is not a shortcut: the
+  route already refuses anything that is not `proposed`, and the 予約 id is
+  the capability in both directions. An owner-only cancel endpoint would be a
+  second admission rule saying the same thing, and the two would drift.
+
+  Declining a *confirmed* 予約 is deliberately not possible here — that is an
+  agreement with somebody else, and unpicking it is a conversation."
+  [seg yoyaku-id]
+  (p/let [res (js/fetch (str host "/yotei/c/" seg "/y/" yoyaku-id)
+                        #js {:method "POST"
+                             :headers #js {"content-type" "application/x-www-form-urlencoded"}
+                             :body "step=cancel"})]
+    (if (.-ok res)
+      (println "  → 却下しました:" yoyaku-id)
+      (do (println "  → 却下できませんでした [" (.-status res) "]")
+          (set! (.-exitCode js/process) 1)))))
+
+(defn- ask-approval!
+  "Show what is being approved and get an explicit yes or no.
+
+  The consent-screen shape, and the parts that matter are the ones
+  `cloud-itonami-app`'s `passkey/start-authorization!` spells out for the
+  stronger version of this: **what the human is shown must be what is acted
+  on**, and the two must be bound together rather than the second being
+  re-supplied afterwards. So the 予約 id is displayed and the decided-upon id
+  is the one carried into `confirm!` — there is no second lookup in between
+  that could return a different 予約.
+
+  A modal, not a banner. Everywhere else in this repo a notification is
+  deliberately non-focus-stealing, because this machine runs many sessions
+  competing for the keyboard. An approval is the exception: a prompt nobody
+  notices is a prompt that gets ignored, and the whole point here is that
+  nothing is confirmed without a person deciding.
+
+  Returns :approve, :decline or :later."
+  [{:keys [title lines]}]
+  (let [body (str/join "\n" lines)
+        script (str "display dialog " (pr-str body)
+                    " with title " (pr-str title)
+                    " buttons {\"あとで\", \"却下\", \"承認\"}"
+                    " default button \"承認\""
+                    " with icon note")
+        {:keys [out status]} (run "osascript" ["-e" script] {})]
+    (cond
+      (not (zero? status)) :later          ; dismissed, or no GUI session
+      (str/includes? out "承認") :approve
+      (str/includes? out "却下") :decline
+      :else :later)))
+
 (defn- notify-desktop! [title body]
   ;; `display notification`, not `display dialog`: a banner does not take
   ;; focus. This machine runs many concurrent sessions competing for it, and a
@@ -177,12 +231,18 @@
 (defn- watch!
   "Poll a calendar and announce 予約 as they arrive.
 
+  With `--approve`, each new proposal is put to the owner as a consent dialog
+  rather than a banner: what it shows is what it acts on, and nothing is
+  confirmed without a person deciding. Answering \"あとで\" leaves the 予約
+  proposed and asks again next round — a deferral is not a decision, and
+  treating it as one would silently drop the request.
+
   The owner's side of the loop with no webhook and no endpoint to run. The
   Worker's webhook is for sending somewhere else; this is for sitting on the
   owner's machine, which is where the decryption key already is — so unlike a
   webhook it can show who asked *and* their contact, without either leaving
   the machine."
-  [seg]
+  [seg approve?]
   (p/loop [seen #{} first-pass? true]
     (p/let [entries (or (kv-get (str "yoyaku-log:" (did seg))) [])
             secret (some-> (kagi-get (key-name seg)) edn/read-string)
@@ -206,8 +266,28 @@
                   when- (str (subs local 0 10) " " (subs local 11 16))]
             (println (str "\n● " (get e "status") "  " when- "  " who
                           "\n  " (get e "yoyakuId")))
-            (notify-desktop! (str "yotei — " (or (:yotei/name cal) seg))
-                             (str who " / " when-)))))
+            (if-not (and approve? (= "proposed" (get e "status")))
+              (notify-desktop! (str "yotei — " (or (:yotei/name cal) seg))
+                               (str who " / " when-))
+              ;; The consent step. What is shown and what is acted on are the
+              ;; same 予約 — the id below is the one carried into confirm!,
+              ;; with no second lookup that could return a different one.
+              (p/let [contact (:contact (decode-who (or plain "")))
+                      answer (ask-approval!
+                              {:title (str "yotei — " (or (:yotei/name cal) seg))
+                               :lines [(str "申し込みがありました。")
+                                       ""
+                                       (str "  日時: " when-)
+                                       (str "  お名前: " who)
+                                       (str "  連絡先: " contact)
+                                       ""
+                                       (str "  ID: " (get e "yoyakuId"))
+                                       ""
+                                       "承認するとこの時間が確定し、他の人は取れなくなります。"]})]
+                (case answer
+                  :approve (p/let [_ (confirm! seg (get e "yoyakuId"))] nil)
+                  :decline (p/let [_ (cancel! seg (get e "yoyakuId"))] nil)
+                  (println "  → あとで（次の巡回でまた尋ねます）")))))))
       (when first-pass?
         (println (str "watch " seg " — 既存 " (count current) " 件。新着を待ちます（Ctrl-C で終了）")))
       (p/let [_ (p/delay 30000)]
@@ -220,8 +300,9 @@
       "keygen" (keygen! a)
       "list" (list! a)
       "confirm" (confirm! a b)
-      "watch" (watch! a)
-      (println "usage: nbb --classpath src scripts/owner.cljs (keygen | list | confirm | watch) <segment> [yoyakuId]"))))
+      "decline" (cancel! a b)
+      "watch" (watch! a (boolean (some #{"--approve"} args)))
+      (println "usage: nbb --classpath src scripts/owner.cljs (keygen | list | confirm | decline | watch [--approve]) <segment> [yoyakuId]"))))
 
 (-> (p/resolved (-main))
     (p/catch (fn [e] (println "error:" (str e)) (set! (.-exitCode js/process) 1))))

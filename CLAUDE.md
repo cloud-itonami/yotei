@@ -72,7 +72,8 @@ JVM に無いので JVM suite の外）。
 nbb --classpath src scripts/owner.cljs keygen  <segment>            # 鍵生成（公開鍵を出力）
 nbb --classpath src scripts/owner.cljs list    <segment>            # 一覧 + 連絡先を復号
 nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId> # 署名して確定
-nbb --classpath src scripts/owner.cljs watch   <segment>            # 新着を待つ（macOS 通知）
+nbb --classpath src scripts/owner.cljs decline <segment> <yoyakuId> # 却下（提案のみ）
+nbb --classpath src scripts/owner.cljs watch   <segment> [--approve] # 新着を待つ
 ```
 
 ## 訪問者の側（2026-08-07）
@@ -153,6 +154,28 @@ OAuth クライアントを作るのは**オーナー作業**（安全床①: ag
 ⚠ **`--macos` は macOS のカレンダーアクセス許可が要る**（実測: システム設定で未許可だと
 `Calendar access is not granted`）。**オーナー作業** — 安全床により agent は
 システム設定を変更しない。`--ics` は許可も資格情報も要らない。
+
+## 承認（consent）— OAuth の同意画面と同じ形（2026-08-08）
+
+`owner.cljs watch <seg> --approve` は、新しい申し込みごとに**承認ダイアログ**を出す。
+名前・連絡先はこの端末で復号して表示し、`承認 / 却下 / あとで` を選ぶ。
+
+- **見せたものと、実行するものが同じ。** 表示した yoyakuId をそのまま `confirm!` に
+  渡す。間に再検索を挟まない —— これは `cloud-itonami-app` の
+  `passkey/start-authorization!` が明示している原則（操作 context を**サーバ側で束縛**し、
+  client に再提出させない）と同じ理由
+- **「あとで」は決定ではない。** 提案のまま残し、次の巡回でまた尋ねる。決定として
+  扱うと申し込みが黙って消える
+- **ここだけ modal。** 他は全部フォーカスを奪わない通知にしてあるが（この機は多数の
+  セッションがキーボードを取り合う）、**承認は例外** —— 誰も気づかない承認プロンプトは
+  無視されるプロンプトで、それでは人が決めたことにならない
+
+**より強い形は既に存在する。** `cloud-itonami-app` の `passkey/start-authorization!` /
+`finish-authorization!` は passkey（Touch ID）で同じことを暗号的にやる —— 操作 context を
+サーバ側で束縛し、`:kind` を分けることで「ログインしただけの assertion が承認として
+通る」のを防いでいる。**web の owner console を作るときはこれを使う**（新しい同意フローを
+書かない）。passkey は署名できるが復号はできないので、連絡先を読むのは引き続き鍵を持つ
+端末側。
 
 ## 通知（2026-08-07）
 
