@@ -57,6 +57,14 @@
   (is (= "yotei" (:itonami.blueprint/id @b))
       "id must equal the repo name, which is the script name, which is the mount segment"))
 
+(deftest it-asks-for-the-narrower-calendar-capability
+  ;; free/busy, not the calendar. yotei never needs a title to decide whether
+  ;; a slot is free, and asking for more than it needs is how a consent screen
+  ;; stops meaning anything.
+  (is (= ["calendar.freebusy.read"] (:itonami.blueprint/requests @b)))
+  (is (not (some #{"calendar.event.write"} (:itonami.blueprint/requests @b)))
+      "writing events is a separate decision and is not implemented"))
+
 (deftest the-gates-this-code-implements-are-still-declared
   (let [ids (set (map :gate/id (:actor/gates @m)))]
     (doseq [g ["G2" "G4" "G5" "G6" "G8"]]
