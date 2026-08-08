@@ -36,6 +36,20 @@
  :itonami.blueprint/robotics false
  :itonami.blueprint/adr "2606072200"
 
+ ;; ── what this app asks of a tenant (ADR-2608093000 D4) ────────────────────
+ ;;
+ ;; The OAuth shape: the app declares its scopes, the person sees them, the
+ ;; person approves. Declared here rather than requested at runtime so the
+ ;; Fleet view can show what connecting would mean **before** anything is
+ ;; granted — a consent screen that only learns the scopes when the app asks
+ ;; for them cannot warn anybody in advance.
+ ;;
+ ;; Each name must exist in cloud-itonami-app's `capability-catalog`, which
+ ;; carries the sentence shown on the approval screen. yotei asks for exactly
+ ;; one thing, and it is the narrower of the two calendar capabilities:
+ ;; free/busy, not the calendar. It never needs to read a title.
+ :itonami.blueprint/requests ["calendar.freebusy.read"]
+
  ;; ── app surface (ADR-2608093000 D1; was :app/* in manifest.edn) ────────────
  :itonami.blueprint/mount "/yotei"
  :itonami.blueprint/org {:organization/id "yotei"
