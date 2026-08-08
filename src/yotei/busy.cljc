@@ -82,6 +82,36 @@
        (sort-by :start)
        vec))
 
+(defn from-google-freebusy
+  "Busy intervals from a Google Calendar **freeBusy** response.
+
+  `POST /calendar/v3/freeBusy` answers
+  `{\"calendars\" {<id> {\"busy\" [{\"start\" .. \"end\" ..}]}}}` and nothing
+  else — no summary, no attendees, no location. That is why this is the
+  endpoint to use rather than `events.list`: with events.list the titles cross
+  the network and are discarded locally, which is a promise about our own
+  code; with freeBusy Google never sends them. The narrower call is the one
+  that does not require trusting us.
+
+  It also answers the recurrence problem that `from-ical` honestly cannot:
+  freeBusy expands recurring events server-side, so a weekly stand-up blocks
+  every week.
+
+  Times are RFC 3339 with an offset, parsed by `yotei.time/parse-rfc3339`
+  rather than `parse-instant` — the latter refuses a non-UTC offset, which is
+  right for a slot a stranger picked and wrong for a provider that answers in
+  local time."
+  [response]
+  (->> (vals (get response "calendars"))
+       (mapcat #(get % "busy"))
+       (keep (fn [b]
+               (let [s (t/parse-rfc3339 (get b "start"))
+                     e (t/parse-rfc3339 (get b "end"))]
+                 (when (and s e (> e s))
+                   {:start s :duration (- e s)}))))
+       (sort-by :start)
+       vec))
+
 (defn merge-adjacent
   "Collapse overlapping and touching intervals.
 

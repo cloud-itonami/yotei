@@ -30,6 +30,7 @@
   worse — un-block a slot the owner is actually in.
 
   Usage:
+    nbb --classpath src scripts/busy.cljs push <segment> --google
     nbb --classpath src scripts/busy.cljs push <segment> --macos
     nbb --classpath src scripts/busy.cljs push <segment> --ics <url|file>
     nbb --classpath src scripts/busy.cljs show <segment>"
@@ -134,6 +135,56 @@
                     :ical/dtend (parse (get e "end"))}))
                (get payload "events"))}))))
 
+(defn- from-google
+  "Google Calendar freeBusy, with a token the caller already has.
+
+  ## Where the token comes from, and why not from here
+
+  `cloud-itonami-app` already implements the whole OAuth workflow — Google
+  provider, PKCE, refresh, and `calendar.readonly` already in its scope list —
+  and its `identity/access-token` says in as many words: *never returns a
+  token reference or token through an HTTP/public view*. That is the right
+  refusal, and it is why this script does not ask the app for one. A second
+  OAuth client registered to yotei would be a second thing to keep secret for
+  no gain.
+
+  So the token is supplied: `$GOOGLE_ACCESS_TOKEN`, or kagi
+  `yotei-google-token`. The intended end state is that the app performs this
+  freeBusy call itself, holding the token it already has, and pushes the
+  intervals — at which point this function is what runs there, unchanged.
+
+  ## freeBusy, not events.list
+
+  The response has nowhere to put a title. events.list would send summaries
+  and attendees across the network to be discarded locally, which is a promise
+  about our code; freeBusy means Google never sends them. It also expands
+  recurrences server-side, which is the limitation `--ics` has to report."
+  [from to]
+  (let [token (or (some-> js/process.env.GOOGLE_ACCESS_TOKEN)
+                  (kagi-get "yotei-google-token"))]
+    (when-not (seq (str token))
+      (throw (ex-info (str "Google のアクセストークンがありません。\n"
+                           "  $GOOGLE_ACCESS_TOKEN か kagi の yotei-google-token に入れてください。\n"
+                           "  OAuth の接続自体は cloud-itonami-app が持っています"
+                           "（Google provider, calendar.readonly、PKCE + refresh）。\n"
+                           "  ただし GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET が未設定なので、"
+                           "まず Google Cloud で OAuth クライアントを作る必要があります（オーナー作業）。")
+                      {})))
+    (p/let [r (js/fetch (or (some-> js/process.env.YOTEI_GOOGLE_FREEBUSY_URL)
+                            "https://www.googleapis.com/calendar/v3/freeBusy")
+                        #js {:method "POST"
+                             :headers #js {"authorization" (str "Bearer " token)
+                                           "content-type" "application/json"}
+                             :body (js/JSON.stringify
+                                    (clj->js {:timeMin from :timeMax to
+                                              :items [{:id "primary"}]}))})
+            body (.json r)]
+      (if-not (.-ok r)
+        (throw (ex-info (str "Google freeBusy が失敗しました [" (.-status r) "]: "
+                             (get-in (js->clj body) ["error" "message"] ""))
+                        {}))
+        (js->clj body)))))
+
 (defn- from-ics [src]
   (p/let [text (if (str/starts-with? src "http")
                  (p/let [r (js/fetch src)]
@@ -158,10 +209,20 @@
           model (cond
                   (flag "--macos") (from-macos (t/format-instant from) (t/format-instant to))
                   (flag "--ics") (from-ics (flag "--ics"))
-                  :else (throw (ex-info "--macos か --ics <url|file> を指定してください。" {})))
-          raw (busy/from-ical model offset (or (:yotei/slot-min cal) 30))
+                  (flag "--google") ::google
+                  :else (throw (ex-info "--macos / --ics <url|file> / --google のいずれかを指定してください。" {})))
+          ;; freeBusy answers intervals directly, so it skips the iCalendar
+          ;; model entirely rather than being squeezed through it.
+          raw (if (= ::google model)
+                (p/let [resp (from-google (t/format-instant from) (t/format-instant to))]
+                  (busy/from-google-freebusy resp))
+                (busy/from-ical model offset (or (:yotei/slot-min cal) 30)))
           intervals (busy/merge-adjacent (busy/within raw from to))
-          report (busy/ingest-report model raw)
+          report (if (= ::google model)
+                   ;; freeBusy expands recurrences server-side, so there is no
+                   ;; un-expanded remainder to warn about — unlike --ics.
+                   {:events (count raw) :intervals (count raw) :recurring-not-expanded 0}
+                   (busy/ingest-report model raw))
           payload {:calendarDid (did seg) :intervals intervals
                    :generatedAt (.toISOString (js/Date.))}
           ;; Signed over the exact bytes that will be stored, so the server
