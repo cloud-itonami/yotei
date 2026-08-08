@@ -19,7 +19,7 @@
         ;; face rather than the agreed instant.
         io.github.kotoba-lang/org-ietf-ical
         {:git/url "https://github.com/kotoba-lang/org-ietf-ical.git"
-         :git/sha "c2c965ec86ca9a02491363c53760368b2762106c"}
+         :git/sha "b0d71592fab2741ab276b5c4a307fbe099ae92dd"}
         io.github.kotoba-lang/jp-go-digital-design-system
         {:git/url "https://github.com/kotoba-lang/jp-go-digital-design-system.git"
          :git/sha "cc8f4849af5def7ea535fd6c0b8a623ccca645e9"}}
