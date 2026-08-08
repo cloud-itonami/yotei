@@ -10,11 +10,19 @@
 ;; as **callable** and an entry without one as a directory record — 77 of 1,215
 ;; are callable today, and this is one of them.
 ;;
-;; The `:app/*` keys in manifest.edn (mount, org, surface) are the app-side
-;; view of the same facts and are deliberately NOT duplicated here: the
-;; catalog answers "what exists and can it be called", the manifest answers
-;; "where does it mount and who owns it". They are joined by :id == repo name
-;; == script name == :app/mount segment, which are one string by construction.
+;; The app-side facts (mount, org, surface) used to live in manifest.edn under
+;; :app/* — a fourth descriptor format invented without checking that this org
+;; already had one, 1,393 times over. ADR-2608093000 D1 folds them here, and
+;; manifest.edn now points at this file rather than repeating it.
+;;
+;; :mount / :org are carried into the generated catalog because a "connect"
+;; UI needs to know where an app lives and who owns it. :surface is NOT: the
+;; generator says of itself that it is "a directory, not a mirror", and a
+;; consumer needing the route list should read this file.
+;;
+;; :id == repo name == script name == the :mount segment. Those are one string
+;; by construction — the dispatch router routes on the script name — so the
+;; catalog row and this file join without a mapping table.
 
 {:itonami.blueprint/id "yotei"
  :itonami.blueprint/name "yotei — 予約 / scheduling commons"
@@ -26,4 +34,19 @@
  :itonami.blueprint/social-impact [:coordination-cost-reduction :no-booker-harvesting]
  :itonami.blueprint/required-technologies [:audit-ledger :durable-object :public-key-envelope]
  :itonami.blueprint/robotics false
- :itonami.blueprint/adr "2606072200"}
+ :itonami.blueprint/adr "2606072200"
+
+ ;; ── app surface (ADR-2608093000 D1; was :app/* in manifest.edn) ────────────
+ :itonami.blueprint/mount "/yotei"
+ :itonami.blueprint/org {:organization/id "yotei"
+                         :organization/name "yotei — 予約"
+                         :organization/did "did:web:app.itonami.cloud:org:yotei"}
+ :itonami.blueprint/surface
+ [{:path "/yotei/c/:calendar" :method :get :doc "空いている時間（公開）"}
+  {:path "/yotei/c/:calendar" :method :post :doc "step=select / step=propose"}
+  {:path "/yotei/c/:calendar/y/:id" :method :get :doc "予約 の状態（訪問者）"}
+  {:path "/yotei/c/:calendar/y/:id/ics" :method :get :doc "確定した 予約 の .ics"}
+  {:path "/yotei/c/:calendar/y/:id" :method :post :doc "step=cancel"}
+  {:path "/yotei/confirm/:calendar" :method :post :doc "確定（owner 署名、G5）"}
+  {:path "/yotei/busy/:calendar" :method :post :doc "free/busy 取り込み（owner 署名）"}
+  {:path "/yotei/health" :method :get :doc "health"}]}
