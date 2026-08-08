@@ -170,6 +170,35 @@
   (testing "and an unnamed calendar keeps the old heading"
     (is (str/includes? (text-of (view/yoyaku-page (ctx))) "アリスの予定を押さえる"))))
 
+(deftest nothing-on-the-proposed-page-is-a-relative-url
+  ;; The bug this exists for, twice. `action="select"` resolved against
+  ;; /yotei/c/jun to /yotei/c/select; then `href="y/<id>"` resolved the same
+  ;; way to /yotei/c/y/<id> and 404'd as "no such calendar: y" in production.
+  ;;
+  ;; The first fix came with a test that only asserted forms had no :action —
+  ;; so the link added later walked straight back into it. This asserts the
+  ;; property instead of the instance: every href on this page is absolute.
+  (let [tree (view/proposed-page
+              (ctx :start-epoch-min (t/parse-instant "2026-03-09T01:00:00Z")
+                   :duration-min 30
+                   :status-url "https://app.itonami.cloud/yotei/c/alice/y/y-1"))
+        hrefs (re-seq #"(?<=:href \")[^\"]+" (pr-str tree))]
+    (is (seq hrefs))
+    (doseq [h hrefs]
+      (testing h
+        (is (or (str/starts-with? h "https://") (str/starts-with? h "/"))
+            "a relative href resolves against the current path and loses a segment")))))
+
+(deftest the-status-url-carries-the-calendar
+  ;; /c/y/<id> is what a relative link produced. The segment must be in there.
+  (let [tree (view/proposed-page
+              (ctx :start-epoch-min (t/parse-instant "2026-03-09T01:00:00Z")
+                   :duration-min 30
+                   :status-url "https://app.itonami.cloud/yotei/c/alice/y/y-1"))
+        s (pr-str tree)]
+    (is (str/includes? s "/c/alice/y/y-1"))
+    (is (not (str/includes? s "\"y/y-1\"")))))
+
 (deftest the-page-is-a-list-of-forms-so-it-works-without-javascript
   (let [tags (tags-of (view/yoyaku-page (ctx)))]
     (is (contains? tags :form))

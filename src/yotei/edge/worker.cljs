@@ -219,7 +219,7 @@
   the version check narrows the window and KV has no atomic compare-and-set to
   close it. Now the read, the decision and the append all happen inside one
   object that handles one request at a time, so there is no window."
-  [env did cal params ctx]
+  [env did cal params ctx host segment]
   (let [now (now-epoch-min)
         start (t/parse-instant (get params "start"))
         minutes (js/parseInt (get params "minutes" "0") 10)
@@ -284,10 +284,30 @@
                                              :calendar cal
                                              :start-epoch-min start
                                              :duration-min minutes
-                                               ;; Relative to /c/<seg>/, so the
-                                               ;; page never needs to know the
-                                               ;; host or the mount.
-                                               :status-url (str "y/" yoyaku-id)})
+                                               ;; ABSOLUTE. `(str "y/" id)` was
+                                               ;; relative and resolved against
+                                               ;; /yotei/c/jun by replacing the
+                                               ;; last segment — /yotei/c/y/<id>,
+                                               ;; which 404s as "no such
+                                               ;; calendar: y". Reported from
+                                               ;; production 2026-08-08.
+                                               ;;
+                                               ;; This is the same bug as the
+                                               ;; earlier action="select", fixed
+                                               ;; once for forms and reintroduced
+                                               ;; here because the test written
+                                               ;; then only covered forms. Nothing
+                                               ;; relative survives on this page
+                                               ;; now.
+                                               ;;
+                                               ;; The mount is knowable: the
+                                               ;; router dispatches on the script
+                                               ;; name, which is the repo name,
+                                               ;; which is :app/mount. Those three
+                                               ;; are one string by construction.
+                                               :status-url (str "https://" host
+                                                                "/yotei/c/" segment
+                                                                "/y/" yoyaku-id)})
                           {:title "\u7533\u3057\u8fbc\u307f\u3092\u53d7\u3051\u4ed8\u3051\u307e\u3057\u305f \u2014 yotei"}))))))))))))))
 
 (defn handle
@@ -499,7 +519,8 @@
                          (.then (fn [params]
                                   (case (get params "step")
                                     "select" (handle-select env did cal params)
-                                    "propose" (handle-propose env did cal params ctx)
+                                    "propose" (handle-propose env did cal params ctx
+                                                               host segment)
                                     (js/Promise.resolve
                                      (json-response {:error "unknown step"} 400))))))
 
