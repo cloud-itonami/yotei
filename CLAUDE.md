@@ -123,6 +123,33 @@ nbb ... scripts/busy.cljs show jun
   この parser は解釈しないので floating になる。UTC と見なすと東京なら 9 時間ずれて
   午前中が空く
 
+### OAuth 接続について
+
+**OAuth の workflow はゼロから作らない — `cloud-itonami-app` が既に持っている。**
+Google provider（PKCE + refresh、scope に
+`https://www.googleapis.com/auth/calendar.readonly` が既に入っている）と
+Microsoft provider（`Calendars.ReadBasic`）、`/api/connections/<provider>/start`。
+
+**yotei は OAuth トークンを持たない。** app の `identity/access-token` の docstring が
+「*Never returns a token reference or token through an HTTP/public view*」と書いており、
+これは正しい拒否。yotei 用に 2 つ目の OAuth クライアントを登録すれば、秘密にすべき
+ものが 2 つに増えるだけで得るものが無い。**トークンは app に留め、free/busy 区間だけを
+署名して push する**（秘密鍵を持たないのと同じ原則）。
+
+**`--google` は `events.list` ではなく `freeBusy` を叩く。** freeBusy の応答には件名の
+入る場所が無いので、events.list のように「受け取ってから捨てる」（＝こちらのコードを
+信じてもらう）necessity が無い。**繰り返し予定もサーバ側で展開される**ので、`--ics` の
+「初回しか塞がらない」制限がここには無い。
+
+```bash
+GOOGLE_ACCESS_TOKEN=... nbb ... scripts/busy.cljs push jun --google
+```
+
+⚠ **現時点で OAuth は実行できない。`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` が
+未設定**（keychain `gftd.google` も env も無し、2026-08-08 実測）。Google Cloud で
+OAuth クライアントを作るのは**オーナー作業**（安全床①: agent はアカウントを作らない）。
+作れば app 側の接続フローがそのまま動き、`--google` はトークンを受け取るだけ。
+
 ⚠ **`--macos` は macOS のカレンダーアクセス許可が要る**（実測: システム設定で未許可だと
 `Calendar access is not granted`）。**オーナー作業** — 安全床により agent は
 システム設定を変更しない。`--ics` は許可も資格情報も要らない。

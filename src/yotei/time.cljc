@@ -146,6 +146,25 @@
   [epoch-min]
   (floor-div epoch-min 1440))
 
+(defn parse-rfc3339
+  "RFC 3339 with an offset (`2026-08-10T10:00:00+09:00`) as epoch minutes.
+
+  `parse-instant` refuses a non-UTC offset on purpose — ignoring one would
+  book nine hours from where the caller meant. But Google and Microsoft both
+  answer in local time with an offset, so something has to apply it rather
+  than refuse it, and doing that in each caller is how one of them ends up
+  dropping it."
+  [s]
+  (let [s (str/trim (str s))]
+    (if-let [m (re-find #"^(.{16,19})([+-])(\d{2}):?(\d{2})$" s)]
+      (let [base (nth m 1)
+            sign (nth m 2)
+            base (if (> (count base) 16) (subs base 0 16) base)
+            off (+ (* (digits->int (nth m 3)) 60) (digits->int (nth m 4)))]
+        (when-let [local (parse-instant base)]
+          (if (= "+" sign) (- local off) (+ local off))))
+      (parse-instant s))))
+
 (defn format-instant
   "Epoch minutes as `\"2026-03-10T10:00:00Z\"`."
   [epoch-min]

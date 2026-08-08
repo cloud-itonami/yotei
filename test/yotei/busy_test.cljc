@@ -115,3 +115,53 @@
 
 (deftest an-empty-calendar-ingests-to-nothing
   (is (= [] (busy/from-ical (ical/parse-str "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n") JST 30))))
+
+;; ── Google freeBusy ──────────────────────────────────────────────────────────
+;;
+;; freeBusy rather than events.list is a privacy decision with a test: the
+;; response shape has nowhere to put a title, so there is nothing to discard
+;; and nothing to trust us about.
+
+(deftest google-freebusy-intervals
+  (let [resp {"calendars"
+              {"primary"
+               {"busy" [{"start" "2026-03-09T10:00:00+09:00"
+                         "end"   "2026-03-09T11:00:00+09:00"}
+                        {"start" "2026-03-09T14:00:00+09:00"
+                         "end"   "2026-03-09T14:30:00+09:00"}]}}}
+        ivs (busy/from-google-freebusy resp)]
+    (is (= 2 (count ivs)))
+    (testing "the +09:00 offset is applied, not ignored"
+      (is (= (t/parse-instant "2026-03-09T01:00:00Z") (:start (first ivs))))
+      (is (= 60 (:duration (first ivs)))))
+    (is (= 30 (:duration (second ivs))))))
+
+(deftest google-freebusy-merges-several-calendars
+  ;; A person with work and personal calendars is busy if either says so.
+  (let [resp {"calendars"
+              {"work" {"busy" [{"start" "2026-03-09T01:00:00Z" "end" "2026-03-09T02:00:00Z"}]}
+               "home" {"busy" [{"start" "2026-03-09T05:00:00Z" "end" "2026-03-09T06:00:00Z"}]}}}
+        ivs (busy/from-google-freebusy resp)]
+    (is (= 2 (count ivs)))
+    (testing "ordered by start regardless of which calendar they came from"
+      (is (< (:start (first ivs)) (:start (second ivs)))))))
+
+(deftest google-freebusy-tolerates-an-empty-or-errored-calendar
+  (is (= [] (busy/from-google-freebusy {"calendars" {"primary" {"busy" []}}})))
+  (is (= [] (busy/from-google-freebusy {})))
+  (testing "an entry with errors and no busy list does not throw"
+    (is (= [] (busy/from-google-freebusy
+               {"calendars" {"x" {"errors" [{"domain" "global" "reason" "notFound"}]}}})))))
+
+(deftest google-freebusy-drops-a-zero-or-negative-interval
+  (is (= [] (busy/from-google-freebusy
+             {"calendars" {"p" {"busy" [{"start" "2026-03-09T01:00:00Z"
+                                         "end" "2026-03-09T01:00:00Z"}]}}}))))
+
+(deftest rfc3339-offsets-round-the-right-way
+  (is (= (t/parse-instant "2026-03-09T01:00:00Z") (t/parse-rfc3339 "2026-03-09T10:00:00+09:00")))
+  (is (= (t/parse-instant "2026-03-09T15:00:00Z") (t/parse-rfc3339 "2026-03-09T10:00:00-05:00")))
+  (testing "a plain Z still works"
+    (is (= (t/parse-instant "2026-03-09T01:00:00Z") (t/parse-rfc3339 "2026-03-09T01:00:00Z"))))
+  (testing "and parse-instant still refuses an offset, so nothing silently ignores one"
+    (is (nil? (t/parse-instant "2026-03-09T10:00:00+09:00")))))
