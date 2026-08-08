@@ -23,7 +23,8 @@
   page is the last thing somebody opens on a bad connection in a hurry, and a
   form that works before a bundle loads is the difference between a meeting and
   a missed one."
-  (:require [clojure.string :as str]
+  (:require [clojure.edn :as edn]
+            [clojure.string :as str]
             [jp-go-dds.page :as page]
             [jp-go-dds.tokens :as tokens]
             [yotei.availability :as av]
@@ -33,6 +34,7 @@
             [yotei.edge.log-do]
             [yotei.edge.notify :as notify]
             [yotei.envelope :as envelope]
+            [yotei.busy :as busy]
             [yotei.ics :as ics]
             [yotei.store :as store])
   (:require-macros [yotei.edge.inline :refer [inline-resource]]))
@@ -123,11 +125,37 @@
         (.then (fn [r] (.json r)))
         (.then (fn [j] (js->clj j))))))
 
-(defn- confirmed-via-do
-  "The confirmed 予約, read through the object rather than off a KV replica."
+(defn- stored-busy
+  "The owner's ingested busy intervals, as blocking entries.
+
+  KV, not the Durable Object: this is a projection of the owner's own
+  calendar, wholly re-derivable by running `busy.cljs push` again. Losing it
+  loses nothing but freshness, which is the test that says a store is a cache.
+  A 予約 is not like that, which is why it lives in the object."
   [env did]
-  (-> (do-call env did "read" nil)
-      (.then (fn [j] (store/current-confirmed (get j "entries"))))))
+  (-> (.get (.-YOYAKU ^js env) (str "busy:" did) #js {:type "text"})
+      (.then (fn [s]
+               (if-not s
+                 []
+                 (let [v (try (edn/read-string s) (catch :default _ nil))]
+                   (busy/as-blocking did (:intervals v))))))
+      (.catch (fn [_] []))))
+
+(defn- blocking-set
+  "Everything that occupies a slot: confirmed 予約 and ingested busy time.
+
+  One list, because `openings` applies one overlap rule to it. A busy block
+  and a confirmed 予約 are different facts with identical consequences for
+  whether a stranger may take a time."
+  [env did]
+  (-> (js/Promise.all #js [(do-call env did "read" nil) (stored-busy env did)])
+      (.then (fn [[j b]]
+               (into (vec (store/current-confirmed (get j "entries"))) b)))))
+
+(defn- confirmed-via-do
+  "Everything blocking. Named for what callers use it for."
+  [env did]
+  (blocking-set env did))
 
 (defn- openings-page [env did cal]
   (let [now (now-epoch-min)]
@@ -321,6 +349,45 @@
                                                       {:ok false :reason (get r "reason")}
                                                       {:ok true :yoyaku (get r "entry")})
                                                     (if (get r "refused") 409 200)))))))))))))))))
+
+      ;; The owner pushing their existing appointments. Signature-verified
+      ;; with the same key that confirms a 予約 (G5): anyone able to write here
+      ;; unsigned could blank a calendar page, or un-block a time the owner is
+      ;; actually in. The signature covers the exact bytes stored, so the
+      ;; server cannot be shown one payload and keep another.
+      (and (= method "POST") (= "busy" (first segs)) (= 2 (count segs)))
+      (let [segment (second segs)]
+        (if-not (re-matches SEGMENT segment)
+          (js/Promise.resolve (json-response {:error "invalid calendar"} 400))
+          (let [store (kv/kv-store (.-YOYAKU ^js env))
+                did (calendar-did host segment)]
+            (-> (js/Promise.all #js [((:calendar store) did) (.json request)])
+                (.then
+                 (fn [[cal body]]
+                   (let [b (js->clj body)
+                         payload (get b "payload")
+                         signature (get b "signature")
+                         pub (:yotei/owner-sig-key cal)]
+                     (cond
+                       (nil? cal) (json-response {:error "no such calendar"} 404)
+                       (nil? pub) (json-response {:error "this calendar has no signing key"} 409)
+                       (or (str/blank? (str payload)) (str/blank? (str signature)))
+                       (json-response {:error "payload and signature are required"} 400)
+                       :else
+                       (-> (envelope/verify pub payload signature)
+                           (.then (fn [ok?]
+                                    (if-not ok?
+                                      (json-response {:error "signature does not verify"} 401)
+                                      (let [parsed (js->clj (js/JSON.parse payload))
+                                            ivs (mapv (fn [i] {:start (get i "start")
+                                                               :duration (get i "duration")})
+                                                      (get parsed "intervals"))]
+                                        (-> (.put (.-YOYAKU ^js env) (str "busy:" did)
+                                                  (pr-str {:intervals ivs
+                                                           :generated-at (get parsed "generatedAt")}))
+                                            (.then (fn [_]
+                                                     (json-response {:ok true
+                                                                     :intervals (count ivs)} 200)))))))))))))))))
 
       ;; Operator-only, and deliberately not part of the 予約 surface: it
       ;; empties a calendar's log. Gated on a secret compared in constant time,

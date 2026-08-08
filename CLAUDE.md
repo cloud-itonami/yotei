@@ -43,6 +43,7 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `yotei.schedule` — 招待/RSVP の予定（cloud-itonami-app から統合） | ✅ |
 | `scripts/calendar.cljs` — カレンダー作成 CLI（検証してから公開） | ✅ |
 | `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
+| `yotei.busy` + `scripts/busy.cljs` — 実カレンダーの予定を ingest | ✅ |
 | `yotei.envelope` — ECDH P-256 + AES-GCM の封筒、ECDSA 署名 | ✅ |
 | `scripts/owner.cljs` — owner の keygen / list（復号）/ confirm（署名） | ✅ |
 | `yotei.ics` — 確定した 予約 の .ics（RFC 5545、UTC） | ✅ |
@@ -93,6 +94,38 @@ id は推測できない UUID で、それが認可そのもの（Calendly の�
 合意した 予約 が、相手のいる場所の 10:00 に入る。`org-ietf-ical` は `Z` を parse して
 **捨てていた**（round-trip で時刻の意味が変わる実バグ）ので、こちらで回避せず
 **上流を直した**（`c2c965e`）。
+
+## 空き時間の ingest（2026-08-08）
+
+`:windows` は「いつなら会ってよいか」という**方針**で、これは手で書くしかない。
+「いつ既に埋まっているか」は**データ**で、毎日変わる。後者を入れないと公開ページは
+すぐ嘘になる。
+
+```bash
+nbb --classpath "src:$(clojure -Spath | tr ':' '\n' | grep org-ietf-ical)" \
+  scripts/busy.cljs push jun --ics <url|file>   # Google の秘密の iCal アドレス / iCloud 公開 URL / ファイル
+nbb ... scripts/busy.cljs push jun --macos      # Calendar.app（iCloud / Google / Exchange をまとめて）
+nbb ... scripts/busy.cljs show jun
+```
+
+- **出ていくのは区間だけ。** `{:start :duration}` のみで、件名も出席者も場所も
+  送らない。yotei は「いつ黙るべきか」だけ知ればよく、その削減は**owner の端末で**
+  起きる（サーバに任せない）
+- **署名付き。** 確定と同じ鍵（G5）。無署名で書ければカレンダーを白紙にもできるし、
+  逆に本当は埋まっている枠を空けることもできる
+- **busy は confirmed 予約 と同じ形。** `openings` の重なり判定は 1 つだけで、
+  2 つが食い違うことがない
+- **KV に置く（DO ではない）。** owner のカレンダーの projection で、push し直せば
+  完全に再構築できる ＝ cache のテストに合格する
+- **繰り返し予定は展開しない。** 初回だけが塞がる。**黙って落とさず毎回警告する** —
+  「N 件取り込みました」が週次定例を含んでいないと、成功に見えて毎週空いたままになる
+- **floating な時刻は owner の offset で読む。** Google/iCloud の export は TZID 付きで、
+  この parser は解釈しないので floating になる。UTC と見なすと東京なら 9 時間ずれて
+  午前中が空く
+
+⚠ **`--macos` は macOS のカレンダーアクセス許可が要る**（実測: システム設定で未許可だと
+`Calendar access is not granted`）。**オーナー作業** — 安全床により agent は
+システム設定を変更しない。`--ics` は許可も資格情報も要らない。
 
 ## 通知（2026-08-07）
 
