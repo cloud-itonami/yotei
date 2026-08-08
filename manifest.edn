@@ -17,28 +17,19 @@
  :actor/adr       "2606072200"
  :actor/wire-projection "wire/actor-manifest.jsonld"
 
- ;; ── itonami.cloud の default app として (owner decision 2026-08-06) ──────────
+ ;; ── app surface は blueprint.edn が正本（ADR-2608093000 D1）─────────────
  ;;
- ;; itonami.cloud の default app は「それぞれ app org に所属する」。所属は
- ;; **app 側が自分で宣言する**ことにして、host 側に app の一覧を持たせない —
- ;; 一覧を host が持つと、app を足すたびに 2 箇所を直すことになり、いずれ
- ;; 片方だけが更新される。ルータの registry はこの宣言群から生成する
- ;; (west.yml を repos.edn から生成するのと同じ向き)。
+ ;; mount / org / surface はここに :app/* として書いてあったが、それは既存を
+ ;; 確認せずに作った 4 つ目の記述子形式だった —— この org は blueprint.edn を
+ ;; 1,393 repo で既に使っており、cloud-itonami-app の Fleet 画面はそこから
+ ;; 生成されたカタログを読む。重複させると、どちらが正かを知らない読み手が
+ ;; 必ず片方だけを更新する。
  ;;
- ;; :app/org は cloud-itonami-app の Organization(テナント)。所有権・membership・
- ;; did:web はそこが持ち、この repo は実装だけを持つ。両者は :app/org の
- ;; organization-id で結ぶ。
- :app/mount       "/yotei"
- :app/host        "app.itonami.cloud"
- :app/default?    true
- :app/org         {:organization/id "yotei"
-                   :organization/name "yotei — 予約"
-                   :organization/did "did:web:app.itonami.cloud:org:yotei"}
- :app/repo        "cloud-itonami/yotei"
- :app/surface     [{:path "/yotei/c/:calendar" :method :get  :doc "空いている時間(公開)"}
-                   {:path "/yotei/c/:calendar/select" :method :post :doc "時間を選ぶ"}
-                   {:path "/yotei/c/:calendar/propose" :method :post :doc "申し込む(未確定)"}
-                   {:path "/yotei/health" :method :get :doc "health"}]
+ ;;   mount / org / surface  → blueprint.edn
+ ;;   actor の gate / cell / lexicon（下）→ このファイル
+ ;;
+ ;; :actor/id == repo 名 == script 名 == blueprint の :mount セグメント。
+ ;; 構造上ひとつの文字列なので、対応表は要らない。
 
  :actor/charter-rider
  {:rider/version "2.0"
