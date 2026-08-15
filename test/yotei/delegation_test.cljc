@@ -31,7 +31,7 @@
            :yotei/seating-min 90
            :yotei/notice-min 60
            :yotei/horizon-days 30
-           :yotei/tz-offset-min 540
+           :yotei/tz "Asia/Tokyo"
            :yotei/tables [[(seat/table-did REST "t2a") 2]
                           [(seat/table-did REST "t4") 4]
                           [(seat/table-did REST "t6") 6]]
@@ -50,6 +50,7 @@
   (merge {:yotei/now-epoch-min now
           :yotei/confirmed []
           :yotei/party-size 4
+          :yotei/offset-at (constantly 540)
           :yotei/owner-signature-verified? true
           :yotei/delegate-signature-verified? true}
          (apply hash-map kvs)))
@@ -61,7 +62,7 @@
 
 (deftest test-authorization-requires-its-bounds
   (doseq [absent [:yotei/not-after-epoch-min :yotei/max-party-size :yotei/seating-min
-                  :yotei/horizon-days :yotei/tables :yotei/windows]]
+                  :yotei/horizon-days :yotei/tables :yotei/windows :yotei/tz]]
     (is (thrown? #?(:clj Exception :cljs js/Error) (auth* absent nil))
         (str "an envelope without " (name absent) " bounds nothing"))))
 
@@ -161,6 +162,68 @@
   (let [rs (reasons (auth*) (yoyaku* "durationMin" 240 "startEpochMin" (- now 60)) (ctx*))]
     (is (contains? rs :duration-not-authorized-seating-time))
     (is (contains? rs :in-the-past))))
+
+;; ── the zone, and why an offset could not have been signed ───────────────────
+;;
+;; Japan has no DST, so a signed `tz=540` was correct forever and the bug was
+;; invisible. These run the same restaurant in Paris, where the same wall clock
+;; is two different instants depending on the month.
+
+(def ^:private paris-summer-day (t/days-from-civil 2026 8 20))     ; Thursday, UTC+2
+(def ^:private paris-winter-day (t/days-from-civil 2026 12 17))    ; Thursday, UTC+1
+(def ^:private dst-ends (* (t/days-from-civil 2026 10 25) 1440))
+
+(defn- paris-offset-at [_zone epoch-min] (if (< epoch-min dst-ends) 120 60))
+
+(defn- paris-19h [day offset] (- (+ (* day 1440) (* 19 60)) offset))
+
+(defn- paris-auth []
+  (auth* :yotei/tz "Europe/Paris"
+         :yotei/not-after-epoch-min (+ (* paris-winter-day 1440) (* 60 1440))))
+
+(deftest test-the-same-wall-clock-is-admitted-in-both-halves-of-the-year
+  (doseq [[label day offset] [["summer" paris-summer-day 120]
+                              ["winter" paris-winter-day 60]]]
+    (let [start (paris-19h day offset)
+          out (delegation/admit (paris-auth)
+                                (yoyaku* "startEpochMin" start)
+                                (ctx* :yotei/now-epoch-min (- start (* 2 1440))
+                                      :yotei/offset-at paris-offset-at))]
+      (is (:yotei/admitted out) (str label ": 19:00 local is inside 17:30–22:00"))
+      (is (= offset (:yotei/resolved-offset-min out))
+          (str label ": the offset actually used is recorded for audit")))))
+
+(deftest test-a-fixed-offset-is-wrong-in-both-directions
+  ;; What a signed `tz=120` would have meant once October arrived. An hour's
+  ;; error does not make bookings "roughly right": every instant lands off the
+  ;; seating grid (17:30 / 19:00 / 20:30), so the real seating is refused and the
+  ;; instant an hour away from it is confirmed in its place.
+  (let [wrong (constantly 120)
+        admit-at (fn [start resolver]
+                   (delegation/admit (paris-auth)
+                                     (yoyaku* "startEpochMin" start)
+                                     (ctx* :yotei/now-epoch-min (- start (* 2 1440))
+                                           :yotei/offset-at resolver)))
+        real-1900 (paris-19h paris-winter-day 60)
+        real-1800 (- real-1900 60)]
+    (testing "the seating the caller actually wants is refused"
+      (let [out (admit-at real-1900 wrong)]
+        (is (not (:yotei/admitted out)))
+        (is (some #{:outside-published-hours} (:yotei/reasons out)))))
+    (testing "and an instant that is NOT a seating is confirmed instead"
+      (is (:yotei/admitted (admit-at real-1800 wrong)))
+      (testing "which the correct resolver refuses, because 18:00 is not a seating"
+        (is (not (:yotei/admitted (admit-at real-1800 paris-offset-at))))))))
+
+(deftest test-an-unresolvable-zone-refuses-rather-than-assuming-utc
+  (doseq [[label resolver] [["no resolver injected" nil]
+                            ["resolver cannot answer" (constantly nil)]
+                            ["resolver answers with nonsense" (constantly "+09:00")]]]
+    (let [out (delegation/admit (auth*) (yoyaku*) (ctx* :yotei/offset-at resolver))]
+      (is (not (:yotei/admitted out)) label)
+      (is (some #{:timezone-unresolved} (:yotei/reasons out)) label)
+      (testing "and does not ALSO claim the shop is closed — that would be a UTC room"
+        (is (not (some #{:outside-published-hours} (:yotei/reasons out))) label)))))
 
 ;; ── confirm ──────────────────────────────────────────────────────────────────
 
