@@ -9,7 +9,12 @@
     re-checked at confirm, so a racing confirm cannot open a hole between the
     two.
   - **G5 no-server-key** — only a member-origin signature confirms. yotei holds
-    no key, so a compromised server cannot manufacture a 予約.
+    no key, so a compromised server cannot manufacture a 予約. Since 2026-08-15
+    there is a second door, `confirm-yoyaku-delegated`, for a receptionist that
+    answers a telephone: it needs a *delegate*-origin signature **and** a true
+    admission from `yotei.delegation`, which re-derives the 予約 against an
+    envelope the owner signed in advance. The key that can confirm is still not
+    yotei's, and what it may confirm is still not yotei's to decide.
   - **G2 no-harvest** — the person reserving is carried as an encrypted
     envelope ref, never as a profile.
   - **G3 append-only** — a status transition appends; nothing is overwritten.
@@ -86,6 +91,45 @@
     (merge yoyaku {"refused" true "reason" "slot was taken before confirm — overlap refused (G4)"})
     :else
     (merge yoyaku {"state" "confirmed" "status" "confirmed" "confirmedSig" (get signature "ref")})))
+
+(defn confirm-yoyaku-delegated
+  "Confirm a 予約 with a receptionist key acting inside an owner-signed envelope.
+
+  `admitted?` is not this namespace's judgement and it is not a hint: it is the
+  whole of `yotei.delegation/admit`, which re-derives every field of this 予約
+  against the text the owner signed. Anything but literal `true` refuses, so a
+  caller that could not evaluate the envelope cannot reach a confirmation by
+  passing what it has.
+
+  G4 is re-checked here regardless, exactly as in `confirm-yoyaku` — the
+  envelope says what may be sold, never that this particular table is still
+  free at this particular moment.
+
+  The audit trail is deliberately wider than the member path's: `confirmedVia`
+  records that nobody read this one, and `authorizedBy` records the envelope
+  text that let it through, so a 予約 confirmed unattended can always be traced
+  back to the sentence the owner signed."
+  [yoyaku signature confirmed admitted? authorization-statement]
+  (cond
+    (not= (get yoyaku "state") "proposed")
+    (merge yoyaku {"refused" true "reason" "予約 is not in :proposed state"})
+    (not= (get signature "origin") "delegate")
+    (merge yoyaku {"refused" true
+                   "reason" "delegated confirm needs a delegate-origin signature"})
+    (not (true? admitted?))
+    (merge yoyaku {"refused" true
+                   "reason" "受付委任の範囲外、または委任を評価できませんでした (G5)"})
+    (not (seq authorization-statement))
+    (merge yoyaku {"refused" true
+                   "reason" "認可した受付委任を記録できないので確定しません (G5)"})
+    (not (is-free? (get yoyaku "calendarDid") (long (get yoyaku "startEpochMin"))
+                   (long (get yoyaku "durationMin")) confirmed))
+    (merge yoyaku {"refused" true "reason" "slot was taken before confirm — overlap refused (G4)"})
+    :else
+    (merge yoyaku {"state" "confirmed" "status" "confirmed"
+                   "confirmedSig" (get signature "ref")
+                   "confirmedVia" "delegate"
+                   "authorizedBy" authorization-statement})))
 
 ;; ── cancel / reschedule ──────────────────────────────────────────────────────
 (defn cancel-yoyaku
