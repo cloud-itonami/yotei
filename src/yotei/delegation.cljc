@@ -69,7 +69,7 @@
   the repeated lines are sorted, so the same envelope canonicalises identically
   on every runtime that recomputes it."
   [{:yotei/keys [delegate-did restaurant-did not-after-epoch-min max-party-size
-                 seating-min notice-min horizon-days tz-offset-min tables windows
+                 seating-min notice-min horizon-days tz tables windows
                  closed-dates]}]
   (str/join
    "\n"
@@ -81,7 +81,7 @@
             (str "seatingMin=" seating-min)
             (str "noticeMin=" notice-min)
             (str "horizonDays=" horizon-days)
-            (str "tz=" tz-offset-min)]
+            (str "tz=" tz)]
            (->> tables (map table-line) sort)
            (->> windows (map window-line) sort)
            (->> closed-dates (map #(str "closed=" %)) sort))))
@@ -89,7 +89,7 @@
 (def ^:private required-fields
   [:yotei/delegate-did :yotei/restaurant-did :yotei/not-after-epoch-min
    :yotei/max-party-size :yotei/seating-min :yotei/horizon-days :yotei/tables
-   :yotei/windows])
+   :yotei/windows :yotei/tz])
 
 (defn authorization
   "Build the envelope. Refuses an incomplete one rather than defaulting it.
@@ -98,8 +98,7 @@
   is how an envelope stops bounding anything; the fields that bound it are
   exactly the fields with no safe default, so they are required."
   [attrs]
-  (let [auth (merge {:yotei/notice-min 60 :yotei/tz-offset-min 0 :yotei/closed-dates #{}}
-                    attrs)
+  (let [auth (merge {:yotei/notice-min 60 :yotei/closed-dates #{}} attrs)
         missing (remove #(some? (get auth %)) required-fields)]
     (when (seq missing)
       (throw (ex-info (str "受付委任に必須の項目がありません: " (str/join ", " (map name missing)))
@@ -113,8 +112,12 @@
   "The room, built from the owner-signed text alone.
 
   Deliberately not a lookup: if this read a floor from storage, a compromised
-  yotei could add a table the owner never signed for and confirm a 予約 on it."
-  [auth]
+  yotei could add a table the owner never signed for and confirm a 予約 on it.
+
+  `offset-min` is NOT from the envelope. The envelope signs the zone
+  (`Europe/Paris`); what that zone's offset is at a particular instant is a fact
+  about the world on that date, and it changes twice a year. See `admit`."
+  [auth offset-min]
   (seat/floor (:yotei/restaurant-did auth)
               (mapv (fn [[table-did seats]]
                       {:yotei/table-id table-did
@@ -122,7 +125,7 @@
                        :yotei/seats seats})
                     (:yotei/tables auth))
               {:yotei/slot-min (:yotei/seating-min auth)
-               :yotei/tz-offset-min (:yotei/tz-offset-min auth)
+               :yotei/tz-offset-min offset-min
                :yotei/notice-min (:yotei/notice-min auth)
                :yotei/horizon-days (:yotei/horizon-days auth)
                :yotei/windows (vec (:yotei/windows auth))
@@ -137,18 +140,53 @@
   different next questions, and a caller told only the first will keep offering
   times that were never the problem.
 
+  ## Why the offset is resolved per 予約 and not carried in the envelope
+
+  The envelope signs a **zone** (`Asia/Tokyo`, `Europe/Paris`), never an offset.
+  An offset is not a property of a restaurant; it is a property of a zone on a
+  date, and outside Japan it changes twice a year. An envelope that signed
+  `tz=60` for a Paris restaurant would state their opening hours correctly for
+  half the year and be an hour wrong for the other half — and because the
+  envelope is what `admit` re-derives against, that hour would be enforced:
+  予約 confirmed outside the hours the owner actually keeps, and refused inside
+  them, with a signature over the mistake.
+
+  So `:yotei/offset-at` is injected — `(fn [zone epoch-min] -> minutes-east)` —
+  and resolved at the instant being judged. Hosts have this
+  (`Intl.DateTimeFormat`, `java.time.ZoneId`); a pure `.cljc` namespace with no
+  clock and no tz database does not, and should not pretend to.
+
+  **This is the same trust as `now-epoch-min`.** yotei already believes the host
+  about what time it is; believing it about what Paris's offset was on that date
+  is not a new exposure. What is not delegated is the zone itself, which the
+  owner signed. The resolved offset is returned in the admission so an audit can
+  recompute the decision without guessing which offset was used.
+
+  A window that straddles a DST transition is not modelled: the offset is
+  resolved once, at the 予約's start. Restaurant hours rarely span 02:00 local,
+  and pretending otherwise would need the tz database this namespace refuses to
+  carry.
+
   `ctx`:
     :yotei/now-epoch-min                  — no clock is read here
     :yotei/confirmed                      — the wire-shaped confirmed 予約
     :yotei/party-size                     — how many people
+    :yotei/offset-at                      — (fn [zone epoch-min] -> offset-min)
     :yotei/owner-signature-verified?      — envelope signature checked out
     :yotei/delegate-signature-verified?   — this 予約's signature checked out"
-  [auth yoyaku {:yotei/keys [now-epoch-min confirmed party-size
+  [auth yoyaku {:yotei/keys [now-epoch-min confirmed party-size offset-at
                              owner-signature-verified? delegate-signature-verified?]}]
-  (let [flr (authorized-floor auth)
-        table-cal-did (get yoyaku "calendarDid")
+  (let [table-cal-did (get yoyaku "calendarDid")
         start (long (get yoyaku "startEpochMin" 0))
         duration (long (get yoyaku "durationMin" 0))
+        offset (when (fn? offset-at)
+                 (let [o (offset-at (:yotei/tz auth) start)]
+                   (when (integer? o) o)))
+        ;; Nothing about the room can be evaluated without an offset, so the
+        ;; floor is built with a placeholder and every offset-dependent check is
+        ;; skipped below. Skipping must never look like passing: the missing
+        ;; offset is itself a reason.
+        flr (authorized-floor auth (or offset 0))
         tbl (first (filter #(= table-cal-did (:yotei/calendar-did %)) (:yotei/tables flr)))
         reasons
         (cond-> []
@@ -190,10 +228,18 @@
           (> (long now-epoch-min) (long (:yotei/not-after-epoch-min auth)))
           (conj :authorization-expired)
 
+          (nil? offset)
+          (conj :timezone-unresolved)
+
           ;; Hours, notice and horizon only -- `confirmed` is deliberately empty
           ;; here so a taken table reports `:slot-taken` and not also 'we are
           ;; closed then', which would be false and would send the caller away.
-          (and (some? tbl)
+          ;;
+          ;; Guarded on the offset: without it this would be evaluated against a
+          ;; UTC room, which for a Tokyo restaurant would call 19:00 local
+          ;; "closed" and 04:00 local "open" -- a confident wrong answer where
+          ;; :timezone-unresolved is the true one.
+          (and (some? tbl) (some? offset)
                (not (availability/open? (seat/table-calendar flr tbl)
                                         start duration [] now-epoch-min)))
           (conj :outside-published-hours)
@@ -204,6 +250,10 @@
     {:yotei/admitted (empty? reasons)
      :yotei/reasons reasons
      :yotei/table (when (empty? reasons) tbl)
+     ;; Recorded so an audit can recompute this decision. Without it, "was this
+     ;; 予約 inside the hours?" is unanswerable after the fact for any zone with
+     ;; a DST transition between then and now.
+     :yotei/resolved-offset-min offset
      :yotei/statement (:yotei/statement auth)}))
 
 (defn confirm
