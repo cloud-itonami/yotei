@@ -7,7 +7,7 @@
   only works if every declaration is present and shaped the same. A typo here
   would otherwise surface as an app that silently fails to mount."
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]))
 
 (def m (delay (edn/read-string (slurp "manifest.edn"))))

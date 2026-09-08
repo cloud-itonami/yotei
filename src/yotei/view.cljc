@@ -28,7 +28,7 @@
   resolves onto DADS primitives. No hex, no px font size, no second dark
   palette — `jp-go-dds.page` already ships `color-scheme` and the inversion
   layer, so both themes come from the same tree."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [jp-go-dds.core :as dds]
             [yotei.availability :as av]
             [yotei.time :as t]))

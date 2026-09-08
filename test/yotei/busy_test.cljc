@@ -5,7 +5,7 @@
   taken. Every mistake in this namespace has the same shape — a busy interval
   read a few hours off, or dropped — and the symptom is a stranger booking
   over something real."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.lang.text] [clojure.test :refer [deftest is testing]]
             [ical.ical :as ical]
             [yotei.availability :as av]
             [yotei.busy :as busy]
@@ -92,7 +92,7 @@
 (deftest blocking-entries-are-marked-so-they-can-be-told-apart
   (let [b (first (busy/as-blocking DID [{:start 100 :duration 30}]))]
     (is (true? (get b "busy")))
-    (is (clojure.string/starts-with? (get b "yoyakuId") "busy-"))))
+    (is (kotoba.lang.text/starts-with? (get b "yoyakuId") "busy-"))))
 
 ;; ── window / trimming ──
 (deftest only-intervals-in-range-are-kept

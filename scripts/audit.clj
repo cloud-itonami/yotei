@@ -1,6 +1,6 @@
 (require '[clojure.edn :as edn]
          '[clojure.java.io :as io]
-         '[clojure.string :as str])
+         '[kotoba.lang.text :as str])
 
 (def tracked
   (->> (file-seq (io/file "."))

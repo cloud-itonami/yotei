@@ -4,7 +4,7 @@
   confirm), G5 no-server-key (only a member signature confirms), G8 consent-bound, G2 no-harvest
   (booker contact only as an encrypted ref), and honest slot generation (booked slots absent)."
   (:require [clojure.test :refer [deftest is]]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [yotei.yoyaku :as yoyaku]))
 
 (def CAL "did:web:yotei.etzhayyim.com:calendar:alice")
@@ -49,7 +49,7 @@
 (deftest test-contact-is-ref-only
   (let [out (yoyaku/propose-yoyaku (req* 600 "contactRef" "com.etzhayyim.encrypted:abcd") [])]
     ;; no plaintext profile/email/phone field exists
-    (is (every? (fn [k] (let [kl (str/lower-case k)]
+    (is (every? (fn [k] (let [kl (str/lower k)]
                           (and (not (str/includes? kl "email"))
                                (not (str/includes? kl "phone"))
                                (not (str/includes? kl "profile")))))

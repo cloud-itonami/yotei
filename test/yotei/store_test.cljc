@@ -1,7 +1,7 @@
 (ns yotei.store-test
   "The store's job is to make two people taking the same slot impossible, not
   unlikely. These tests drive the races directly rather than hoping."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             [yotei.availability :as av]
             [yotei.store :as store]

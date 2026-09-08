@@ -4,7 +4,7 @@
   The assertion that matters is the `Z`. A floating DTSTART would put a 予約
   agreed for 10:00 in Tokyo at 10:00 wherever the attendee opens it, and
   nothing in the file would look wrong."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             [yotei.availability :as av]
             [yotei.ics :as ics]

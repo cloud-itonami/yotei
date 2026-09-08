@@ -36,7 +36,7 @@
   rules lived next to `store/transact!` they could not be tested without it."
   (:require [calendar.model :as calendar]
             [calendar.validate :as calendar-validate]
-            [clojure.string :as str]))
+            [kotoba.lang.text :as str]))
 
 (def schema "cloud.itonami.app.scheduler.v1")
 
