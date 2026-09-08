@@ -48,7 +48,7 @@
   (WebCrypto) at the edge. Verification arrives as two booleans, and **anything
   other than `true` is a refusal** — a nil verification result is 'we could not
   check', which must never read the same as 'we checked and it was fine'."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [yotei.availability :as availability]
             [yotei.seat :as seat]
             [yotei.yoyaku :as yoyaku]))

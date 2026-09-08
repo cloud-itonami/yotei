@@ -25,7 +25,7 @@
   Japan has never had DST while Berlin has — but it is honest about being an
   offset, whereas a server-local `LocalDateTime` silently claims to be a
   timezone and is wrong on the machine that renders it."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def ^:private digit
   ;; Portable because a cljs char is a one-character string and `(seq \"12\")`

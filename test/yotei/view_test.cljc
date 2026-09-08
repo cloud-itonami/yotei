@@ -7,7 +7,7 @@
   (it asks only for what holds the slot). A claim in a docstring with nothing
   checking it is a claim that drifts."
   (:require [clojure.set :as set]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             [clojure.walk :as walk]
             [yotei.availability :as av]
@@ -53,7 +53,7 @@
     (doseq [nudge ["残り" "あと僅か" "まもなく" "お早め" "人気" "限定" "急" "締切"
                    "left" "hurry" "only" "last chance"]]
       (testing nudge
-        (is (not (str/includes? (str/lower-case txt) (str/lower-case nudge))))))))
+        (is (not (str/includes? (str/lower txt) (str/lower nudge))))))))
 
 (deftest yoyaku-page-does-not-render-taken-slots-at-all
   ;; Not disabled, not struck through — absent. A greyed-out row would both
@@ -85,7 +85,7 @@
         txt (text-of tree)]
     (is (str/includes? txt "まだ確定していません"))
     (is (not (str/includes? txt "予約が確定")))
-    (is (not (str/includes? (str/lower-case txt) "confirmed")))))
+    (is (not (str/includes? (str/lower txt) "confirmed")))))
 
 ;; ── G2: only what holds the slot ──
 (deftest confirm-form-asks-for-nothing-it-does-not-need
