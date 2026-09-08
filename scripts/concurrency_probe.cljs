@@ -11,7 +11,7 @@
   Run: nbb --classpath src scripts/concurrency_probe.cljs <segment> [n]"
   (:require ["child_process" :as cp]
             [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [promesa.core :as p]
             [yotei.time :as t]))
 

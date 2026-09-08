@@ -13,7 +13,7 @@
 
   Run: nbb scripts/e2e_public.cljs [base-url]"
   (:require ["playwright$default" :as pw]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [promesa.core :as p]))
 
 (def base

@@ -6,7 +6,7 @@
   the runtime the CLI uses, and the Worker uses the same API.
 
   Run: nbb --classpath src scripts/envelope_test.cljs"
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [promesa.core :as p]
             [yotei.envelope :as env]))
 

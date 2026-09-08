@@ -25,7 +25,7 @@
     nbb --classpath src scripts/owner.cljs watch   <segment> [--approve]"
   (:require ["child_process" :as cp]
             [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [promesa.core :as p]
             [yotei.envelope :as envelope]
             [yotei.time :as t]))

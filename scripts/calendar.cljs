@@ -29,7 +29,7 @@
   (:require ["child_process" :as cp]
             ["fs" :as fs]
             [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [yotei.availability :as av]
             [yotei.time :as t]))
 
