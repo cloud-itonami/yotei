@@ -24,7 +24,7 @@
   form that works before a bundle loads is the difference between a meeting and
   a missed one."
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [jp-go-dds.page :as page]
             [jp-go-dds.tokens :as tokens]
             [yotei.availability :as av]

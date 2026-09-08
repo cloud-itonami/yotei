@@ -37,7 +37,7 @@
   (:require ["child_process" :as cp]
             ["fs" :as fs]
             [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [ical.ical :as ical]
             [promesa.core :as p]
             [yotei.busy :as busy]

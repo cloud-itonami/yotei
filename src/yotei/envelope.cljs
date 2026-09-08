@@ -35,7 +35,7 @@
   cannot be lifted from one 予約 and pasted onto another — the ciphertext
   would still decrypt to the right bytes, but GCM refuses because the AAD no
   longer matches."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def ^:private subtle (.-subtle js/crypto))
 (def ^:private ec #js {:name "ECDH" :namedCurve "P-256"})

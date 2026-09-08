@@ -22,7 +22,7 @@
   Run: nbb scripts/rename-booking-to-yoyaku.cljs [--check]"
   (:require ["fs" :as fs]
             ["path" :as path]
-            [clojure.string :as str]))
+            [kotoba.lang.text :as str]))
 
 (def root (or (some-> js/process.env.YOTEI_ROOT) "."))
 
