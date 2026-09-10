@@ -15,7 +15,7 @@
   // repository name and manifest.edn's :app/mount says "/yotei". Those three
   // agree by being the same string, not by a mapping table.
   // KV holds two different things now, and only one of them is authoritative.
-  //   calendar:<did>    the calendar definition — written by scripts/calendar.cljs
+  //   calendar:<did>    the calendar definition — written by scripts/calendar.kotoba
   //   yoyaku-log:<did>  a MIRROR of the log; the Durable Object owns the original
   // Deleting a mirror loses nothing: the object rebuilds it on the next write.
   "kv_namespaces": [

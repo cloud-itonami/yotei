@@ -19,7 +19,7 @@ cloud-itonami-app の Organization が持ち、この repo は実装を持つ。
 ## 用語: 予約 / yoyaku（booking は撤去済み、2026-08-06）
 
 Clojure API・wire キー・lexicon NSID のすべてが `yoyaku`。`data/` `wire/`
-`manifest.edn` に `booking` は 1 件も残っていない（`scripts/rename-booking-to-yoyaku.cljs`）。
+`manifest.edn` に `booking` は 1 件も残っていない（`scripts/rename-booking-to-yoyaku.kotoba`）。
 NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 （`cloud.itonami.apps.yotei.proposeYoyaku` / `cloud.itonami.yotei.yoyaku`）。
 何も deploy されていない今が唯一の無償で改名できる時点だった。
@@ -41,17 +41,17 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | `yotei.edge.log-do` — Durable Object（正本）+ KV mirror | ✅ lost-update 解消 |
 | **`https://app.itonami.cloud/yotei/c/<calendar>`** | ✅ **live** |
 | `yotei.schedule` — 招待/RSVP の予定（cloud-itonami-app から統合） | ✅ |
-| `scripts/calendar.cljs` — カレンダー作成 CLI（検証してから公開） | ✅ |
-| `scripts/e2e_public.cljs` — 実ブラウザで公開ページを操作する harness | ✅ |
-| `yotei.busy` + `scripts/busy.cljs` — 実カレンダーの予定を ingest | ✅ |
+| `scripts/calendar.kotoba` — カレンダー作成 CLI（検証してから公開） | ✅ |
+| `scripts/e2e_public.kotoba` — 実ブラウザで公開ページを操作する harness | ✅ |
+| `yotei.busy` + `scripts/busy.kotoba` — 実カレンダーの予定を ingest | ✅ |
 | `yotei.envelope` — ECDH P-256 + AES-GCM の封筒、ECDSA 署名 | ✅ |
-| `scripts/owner.cljs` — owner の keygen / list（復号）/ confirm（署名） | ✅ |
+| `scripts/owner.kotoba` — owner の keygen / list（復号）/ confirm（署名） | ✅ |
 | `yotei.ics` — 確定した 予約 の .ics（RFC 5545、UTC） | ✅ |
 | 訪問者の状態ページ `/c/<seg>/y/<id>` — 状態 / .ics / 取消 | ✅ |
 | owner console（web） | ❌ 未（下記の理由で CLI が先） |
 
 `clojure -M:test` → 103 tests / 407 assertions。
-`nbb --classpath src scripts/envelope_test.cljs` → 封筒と署名の 16 検査（WebCrypto は
+`nbb --classpath src scripts/envelope_test.kotoba` → 封筒と署名の 16 検査（WebCrypto は
 JVM に無いので JVM suite の外）。
 
 ## 連絡先の封筒と、確定の署名（2026-08-07）
@@ -69,11 +69,11 @@ JVM に無いので JVM suite の外）。
   嘘をついて公開されたので、文と ciphertext の原因を 1 つにした
 
 ```bash
-nbb --classpath src scripts/owner.cljs keygen  <segment>            # 鍵生成（公開鍵を出力）
-nbb --classpath src scripts/owner.cljs list    <segment>            # 一覧 + 連絡先を復号
-nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId> # 署名して確定
-nbb --classpath src scripts/owner.cljs decline <segment> <yoyakuId> # 却下（提案のみ）
-nbb --classpath src scripts/owner.cljs watch   <segment> [--approve] # 新着を待つ
+nbb --classpath src scripts/owner.kotoba keygen  <segment>            # 鍵生成（公開鍵を出力）
+nbb --classpath src scripts/owner.kotoba list    <segment>            # 一覧 + 連絡先を復号
+nbb --classpath src scripts/owner.kotoba confirm <segment> <yoyakuId> # 署名して確定
+nbb --classpath src scripts/owner.kotoba decline <segment> <yoyakuId> # 却下（提案のみ）
+nbb --classpath src scripts/owner.kotoba watch   <segment> [--approve] # 新着を待つ
 ```
 
 ## 訪問者の側（2026-08-07）
@@ -104,9 +104,9 @@ id は推測できない UUID で、それが認可そのもの（Calendly の�
 
 ```bash
 nbb --classpath "src:$(clojure -Spath | tr ':' '\n' | grep org-ietf-ical)" \
-  scripts/busy.cljs push jun --ics <url|file>   # Google の秘密の iCal アドレス / iCloud 公開 URL / ファイル
-nbb ... scripts/busy.cljs push jun --macos      # Calendar.app（iCloud / Google / Exchange をまとめて）
-nbb ... scripts/busy.cljs show jun
+  scripts/busy.kotoba push jun --ics <url|file>   # Google の秘密の iCal アドレス / iCloud 公開 URL / ファイル
+nbb ... scripts/busy.kotoba push jun --macos      # Calendar.app（iCloud / Google / Exchange をまとめて）
+nbb ... scripts/busy.kotoba show jun
 ```
 
 - **出ていくのは区間だけ。** `{:start :duration}` のみで、件名も出席者も場所も
@@ -143,7 +143,7 @@ Microsoft provider（`Calendars.ReadBasic`）、`/api/connections/<provider>/sta
 「初回しか塞がらない」制限がここには無い。
 
 ```bash
-GOOGLE_ACCESS_TOKEN=... nbb ... scripts/busy.cljs push jun --google
+GOOGLE_ACCESS_TOKEN=... nbb ... scripts/busy.kotoba push jun --google
 ```
 
 ⚠ **現時点で OAuth は実行できない。`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` が
@@ -221,10 +221,10 @@ browser console にすると owner の生の秘密鍵をブラウザに置くこ
 人を招く前に本当の空き時間に直すこと。
 
 ```bash
-nbb --classpath src scripts/calendar.cljs put calendars/jun.edn --dry-run  # 何枠出るか
-nbb --classpath src scripts/calendar.cljs put calendars/jun.edn            # 公開
-nbb --classpath src scripts/calendar.cljs list                             # 一覧
-nbb scripts/e2e_public.cljs <url>                                          # 実ブラウザ検証
+nbb --classpath src scripts/calendar.kotoba put calendars/jun.edn --dry-run  # 何枠出るか
+nbb --classpath src scripts/calendar.kotoba put calendars/jun.edn            # 公開
+nbb --classpath src scripts/calendar.kotoba list                             # 一覧
+nbb scripts/e2e_public.kotoba <url>                                          # 実ブラウザ検証
 ```
 
 **1 エントリ = 1 リンク。** Calendly の単位が人ではなく「用件の種類」なのと同じ。
@@ -249,7 +249,7 @@ script 名・repo 名・`:app/mount` の 3 つは同じ文字列であること�
 
 **KV の lost-update は実測で確認され、Durable Object で塞いだ。**
 
-計測（`scripts/concurrency_probe.cljs`）: 1 カレンダーに 8 件の 予約 を同時投入
+計測（`scripts/concurrency_probe.kotoba`）: 1 カレンダーに 8 件の 予約 を同時投入
 （全部別の枠なので全部通るのが正しい）。
 
 | | 受理 | 保存 | 失われた |
