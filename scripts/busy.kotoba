@@ -30,10 +30,10 @@
   worse — un-block a slot the owner is actually in.
 
   Usage:
-    nbb --classpath src scripts/busy.cljs push <segment> --google
-    nbb --classpath src scripts/busy.cljs push <segment> --macos
-    nbb --classpath src scripts/busy.cljs push <segment> --ics <url|file>
-    nbb --classpath src scripts/busy.cljs show <segment>"
+    kbb --backend sci --classpath src scripts/busy.cljs push <segment> --google
+    kbb --backend sci --classpath src scripts/busy.cljs push <segment> --macos
+    kbb --backend sci --classpath src scripts/busy.cljs push <segment> --ics <url|file>
+    kbb --backend sci --classpath src scripts/busy.cljs show <segment>"
   (:require ["child_process" :as cp]
             ["fs" :as fs]
             [clojure.edn :as edn]
@@ -278,7 +278,7 @@
           "push" (push! seg)
           "show" (show! seg)
           (p/resolved
-           (println "usage: nbb --classpath src scripts/busy.cljs (push|show) <segment> [--macos | --ics <url|file>]")))
+           (println "usage: kbb --backend sci --classpath src scripts/busy.cljs (push|show) <segment> [--macos | --ics <url|file>]")))
         (p/catch (fn [e]
                    (println "エラー:" (or (ex-message e) (str e)))
                    (set! (.-exitCode js/process) 1))))))

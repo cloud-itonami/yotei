@@ -18,11 +18,11 @@
   where the key lives, not before one.
 
   Usage:
-    nbb --classpath src scripts/owner.cljs keygen <segment>
-    nbb --classpath src scripts/owner.cljs list <segment>
-    nbb --classpath src scripts/owner.cljs confirm <segment> <yoyakuId>
-    nbb --classpath src scripts/owner.cljs decline <segment> <yoyakuId>
-    nbb --classpath src scripts/owner.cljs watch   <segment> [--approve]"
+    kbb --backend sci --classpath src scripts/owner.cljs keygen <segment>
+    kbb --backend sci --classpath src scripts/owner.cljs list <segment>
+    kbb --backend sci --classpath src scripts/owner.cljs confirm <segment> <yoyakuId>
+    kbb --backend sci --classpath src scripts/owner.cljs decline <segment> <yoyakuId>
+    kbb --backend sci --classpath src scripts/owner.cljs watch   <segment> [--approve]"
   (:require ["child_process" :as cp]
             [clojure.edn :as edn]
             [kotoba.lang.text :as str]
@@ -145,7 +145,7 @@
                           "  " (get e "yoyakuId")))
             (println (str "      " (or (:name (::who e)) "（名前なし）")
                           "  /  " (:contact (::who e))))))
-        (println "\n確定: nbb --classpath src scripts/owner.cljs confirm" seg "<yoyakuId>")))))
+        (println "\n確定: kbb --backend sci --classpath src scripts/owner.cljs confirm" seg "<yoyakuId>")))))
 
 ;; ── confirm ──────────────────────────────────────────────────────────────────
 
@@ -302,7 +302,7 @@
       "confirm" (confirm! a b)
       "decline" (cancel! a b)
       "watch" (watch! a (boolean (some #{"--approve"} args)))
-      (println "usage: nbb --classpath src scripts/owner.cljs (keygen | list | confirm | decline | watch [--approve]) <segment> [yoyakuId]"))))
+      (println "usage: kbb --backend sci --classpath src scripts/owner.cljs (keygen | list | confirm | decline | watch [--approve]) <segment> [yoyakuId]"))))
 
 (-> (p/resolved (-main))
     (p/catch (fn [e] (println "error:" (str e)) (set! (.-exitCode js/process) 1))))

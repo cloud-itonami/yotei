@@ -50,8 +50,8 @@ NSID は同時に `com.etzhayyim.*` → `cloud.itonami.*` へ再ホームした
 | 訪問者の状態ページ `/c/<seg>/y/<id>` — 状態 / .ics / 取消 | ✅ |
 | owner console（web） | ❌ 未（下記の理由で CLI が先） |
 
-`clojure -M:test` → 103 tests / 407 assertions。
-`nbb --classpath src scripts/envelope_test.kotoba` → 封筒と署名の 16 検査（WebCrypto は
+`kbb -M:test` → 103 tests / 407 assertions。
+`kbb --backend sci --classpath src scripts/envelope_test.kotoba` → 封筒と署名の 16 検査（WebCrypto は
 JVM に無いので JVM suite の外）。
 
 ## 連絡先の封筒と、確定の署名（2026-08-07）
@@ -69,11 +69,11 @@ JVM に無いので JVM suite の外）。
   嘘をついて公開されたので、文と ciphertext の原因を 1 つにした
 
 ```bash
-nbb --classpath src scripts/owner.kotoba keygen  <segment>            # 鍵生成（公開鍵を出力）
-nbb --classpath src scripts/owner.kotoba list    <segment>            # 一覧 + 連絡先を復号
-nbb --classpath src scripts/owner.kotoba confirm <segment> <yoyakuId> # 署名して確定
-nbb --classpath src scripts/owner.kotoba decline <segment> <yoyakuId> # 却下（提案のみ）
-nbb --classpath src scripts/owner.kotoba watch   <segment> [--approve] # 新着を待つ
+kbb --backend sci --classpath src scripts/owner.kotoba keygen  <segment>            # 鍵生成（公開鍵を出力）
+kbb --backend sci --classpath src scripts/owner.kotoba list    <segment>            # 一覧 + 連絡先を復号
+kbb --backend sci --classpath src scripts/owner.kotoba confirm <segment> <yoyakuId> # 署名して確定
+kbb --backend sci --classpath src scripts/owner.kotoba decline <segment> <yoyakuId> # 却下（提案のみ）
+kbb --backend sci --classpath src scripts/owner.kotoba watch   <segment> [--approve] # 新着を待つ
 ```
 
 ## 訪問者の側（2026-08-07）
@@ -103,7 +103,7 @@ id は推測できない UUID で、それが認可そのもの（Calendly の�
 すぐ嘘になる。
 
 ```bash
-nbb --classpath "src:$(clojure -Spath | tr ':' '\n' | grep org-ietf-ical)" \
+kbb --backend sci --classpath "src:$(kbb -Spath | tr ':' '\n' | grep org-ietf-ical)" \
   scripts/busy.kotoba push jun --ics <url|file>   # Google の秘密の iCal アドレス / iCloud 公開 URL / ファイル
 nbb ... scripts/busy.kotoba push jun --macos      # Calendar.app（iCloud / Google / Exchange をまとめて）
 nbb ... scripts/busy.kotoba show jun
@@ -221,9 +221,9 @@ browser console にすると owner の生の秘密鍵をブラウザに置くこ
 人を招く前に本当の空き時間に直すこと。
 
 ```bash
-nbb --classpath src scripts/calendar.kotoba put calendars/jun.edn --dry-run  # 何枠出るか
-nbb --classpath src scripts/calendar.kotoba put calendars/jun.edn            # 公開
-nbb --classpath src scripts/calendar.kotoba list                             # 一覧
+kbb --backend sci --classpath src scripts/calendar.kotoba put calendars/jun.edn --dry-run  # 何枠出るか
+kbb --backend sci --classpath src scripts/calendar.kotoba put calendars/jun.edn            # 公開
+kbb --backend sci --classpath src scripts/calendar.kotoba list                             # 一覧
 nbb scripts/e2e_public.kotoba <url>                                          # 実ブラウザ検証
 ```
 
@@ -234,7 +234,7 @@ nbb scripts/e2e_public.kotoba <url>                                          # �
 ## 運用
 
 ```bash
-npx shadow-cljs release worker          # dist/worker.js（dds.css を compile 時に inline）
+amu compile --target wasm32-browser worker          # dist/worker.js（dds.css を compile 時に inline）
 npx wrangler deploy --dispatch-namespace ai-gftd-repository-dispatch
 ```
 

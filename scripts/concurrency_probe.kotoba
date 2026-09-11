@@ -8,7 +8,7 @@
 
   Expected before the fix: fewer entries than requests. After: exactly N.
 
-  Run: nbb --classpath src scripts/concurrency_probe.cljs <segment> [n]"
+  Run: kbb --backend sci --classpath src scripts/concurrency_probe.cljs <segment> [n]"
   (:require ["child_process" :as cp]
             [clojure.edn :as edn]
             [kotoba.lang.text :as str]

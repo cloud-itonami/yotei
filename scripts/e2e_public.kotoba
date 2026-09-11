@@ -11,7 +11,7 @@
   this machine runs many concurrent Claude Code sessions competing for OS
   focus, and a headed browser would steal it. Headless takes no focus.
 
-  Run: nbb scripts/e2e_public.cljs [base-url]"
+  Run: kbb --backend sci scripts/e2e_public.cljk [base-url]"
   (:require ["playwright$default" :as pw]
             [kotoba.lang.text :as str]
             [promesa.core :as p]))

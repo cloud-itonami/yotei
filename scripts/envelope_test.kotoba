@@ -5,7 +5,7 @@
   WebCrypto, which the JVM does not have. Running it here proves it works in
   the runtime the CLI uses, and the Worker uses the same API.
 
-  Run: nbb --classpath src scripts/envelope_test.cljs"
+  Run: kbb --backend sci --classpath src scripts/envelope_test.cljs"
   (:require [kotoba.lang.text :as str]
             [promesa.core :as p]
             [yotei.envelope :as env]))
