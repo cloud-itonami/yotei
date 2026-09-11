@@ -54,7 +54,7 @@
      :status (get entry "status")
      ;; Said explicitly so a reader does not go looking for a name or contact
      ;; field and conclude it was forgotten.
-     :who "sealed — open with: nbb --classpath src scripts/owner.cljs list <segment>"}))
+     :who "sealed — open with: kbb --backend sci --classpath src scripts/owner.cljs list <segment>"}))
 
 (defn notify!
   "POST the notification, if the calendar has somewhere to send it.

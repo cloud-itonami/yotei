@@ -18,7 +18,7 @@
 [{:segment "jun"
   :name "30分の打ち合わせ"
   ;; 公開鍵のみ。秘密鍵は kagi personal/yotei-owner-jun。
-  ;; `nbb --classpath src scripts/owner.kotoba keygen jun` が出力する。
+  ;; `kbb --backend sci --classpath src scripts/owner.kotoba keygen jun` が出力する。
   :owner-enc-key {"key_ops" [], "ext" true, "kty" "EC", "x" "4fTSKgxtRih1EdkmE7AdTXjXHFjn9qlpzWVR_hFtsKE", "y" "1E_Z-24GBPedp1JyClvRNHrp3rzubUIlJgIwMoHu17Y", "crv" "P-256"}
   :owner-sig-key {"key_ops" ["verify"], "ext" true, "kty" "EC", "x" "Uy7jhTNzhn8o8-aXapYmbcFYkg-axxaqqsrY5ic55fE", "y" "_CluAW9sBV6lj7buZijfnEskhpzwX-TOcyQKs8V841s", "crv" "P-256"}
   :owner-label "川崎"

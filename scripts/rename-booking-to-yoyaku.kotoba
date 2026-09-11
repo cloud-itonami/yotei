@@ -19,7 +19,7 @@
   renaming somebody else's type because our own prefix changed would break the
   reference rather than move it.
 
-  Run: nbb scripts/rename-booking-to-yoyaku.cljs [--check]"
+  Run: kbb --backend sci scripts/rename-booking-to-yoyaku.cljk [--check]"
   (:require ["fs" :as fs]
             ["path" :as path]
             [kotoba.lang.text :as str]))

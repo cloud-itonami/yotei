@@ -22,10 +22,10 @@
   the same person. The segment is the URL, so it is what the visitor sees.
 
   Usage:
-    nbb scripts/calendar.cljs list
-    nbb scripts/calendar.cljs show <segment>
-    nbb scripts/calendar.cljs put <spec.edn>
-    nbb scripts/calendar.cljs put <spec.edn> --dry-run"
+    kbb --backend sci scripts/calendar.cljk list
+    kbb --backend sci scripts/calendar.cljk show <segment>
+    kbb --backend sci scripts/calendar.cljk put <spec.edn>
+    kbb --backend sci scripts/calendar.cljk put <spec.edn> --dry-run"
   (:require ["child_process" :as cp]
             ["fs" :as fs]
             [clojure.edn :as edn]
@@ -164,7 +164,7 @@
         "list" (list!)
         "show" (show! a)
         "put" (put! a dry?)
-        (println "usage: nbb scripts/calendar.cljs (list | show <segment> | put <spec.edn> [--dry-run])"))
+        (println "usage: kbb --backend sci scripts/calendar.cljk (list | show <segment> | put <spec.edn> [--dry-run])"))
       (catch :default e
         (println "エラー:" (or (ex-message e) (str e)))
         (set! (.-exitCode js/process) 1)))))
