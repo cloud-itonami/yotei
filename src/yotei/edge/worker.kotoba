@@ -10,7 +10,7 @@
   ## The ingress is ClojureScript on purpose
 
   Kotoba has no ingress capability (no Request→Response effect), so an entry
-  point cannot be written in `.kotoba` today — ADR-2606290000, and CLAUDE.md
+  point cannot be written in `.kotoba` today — ADR-2606290000, and AGENTS.md
   says so directly. Everything the request *decides* is nonetheless in the
   portable `.cljc` namespaces; this file parses, awaits and serialises, and
   makes no scheduling decision of its own. That is the boundary to hold: if a

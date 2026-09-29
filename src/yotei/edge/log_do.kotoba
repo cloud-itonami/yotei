@@ -13,7 +13,7 @@
   A Durable Object is globally unique per name and single-threaded. 'There is
   exactly one writer' stops being something to implement — no lease, no fencing
   epoch, no retry loop — and becomes a property of where the code runs. This is
-  the shape CLAUDE.md prescribes for precisely this problem: use the DO as the
+  the shape AGENTS.md prescribes for precisely this problem: use the DO as the
   serializer.
 
   ## Storage: authoritative here, mirrored to KV
@@ -21,7 +21,7 @@
   `ctx.storage` is strongly consistent and transactional, so it holds the
   authority. But per-object storage is private to the object, and if it were
   the only copy the 予約 面 would be split into one island per calendar —
-  CLAUDE.md's other rule, and the reason DO storage is not simply 'the answer'.
+  AGENTS.md's other rule, and the reason DO storage is not simply 'the answer'.
 
   So every append also writes the KV mirror. KV is then a *projection*: delete
   it and nothing is lost, because the DO rebuilds it. That is the test which
