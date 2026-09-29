@@ -268,7 +268,7 @@ version 検査は窓を狭めるだけで、KV に atomic CAS が無い以上閉
 - **正本は `ctx.storage`**（強整合・トランザクショナル）
 - **KV は mirror**。`yoyaku-log:<did>` を消しても何も失われない — 次の書き込みで
   DO が再構築する（**実測で確認: 16 件のログを消して、1 件 propose したら 17 件で
-  復活**）。CLAUDE.md の「消して再構築できるなら cache」テストに合格する
+  復活**）。AGENTS.md の「消して再構築できるなら cache」テストに合格する
 - mirror を await しない。append は既に durable で、遅い KV 書き込みが応答を
   遅らせる理由が無い
 - **DO は規則を持たない。**判断は `yotei.store/decide-propose` /

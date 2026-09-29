@@ -3,7 +3,7 @@
 
   ## Why KV and not D1
 
-  This is an application path, not a distributed-consensus one — CLAUDE.md's
+  This is an application path, not a distributed-consensus one — AGENTS.md's
   rule bans D1 as a *premise* under blockchain/ref/ledger paths, and yotei is
   neither. What it does need is a store whose failure mode is understood, and
   KV's is: eventually consistent reads, last-write-wins writes.
@@ -37,7 +37,7 @@
     to exist.
 
   That is not acceptable as the permanent answer, and it is not being sold as
-  one. The fix is a Durable Object per calendar, which CLAUDE.md already
+  one. The fix is a Durable Object per calendar, which AGENTS.md already
   prescribes for exactly this shape: 'DO は直列化器・realtime room として使い、
   ストレージは共有バックエンドに置く' — a DO is globally unique and
   single-threaded, so 'there is exactly one writer' comes for free instead of
